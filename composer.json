@@ -8,7 +8,9 @@
         "php": "^8.2",
         "illuminate/contracts": "^11.0|^12.0|^13.0",
         "illuminate/support": "^11.0|^12.0|^13.0",
-        "spatie/laravel-medialibrary": "^11.0"
+        "spatie/laravel-data": "^4.0|^5.0",
+        "spatie/laravel-medialibrary": "^11.0",
+        "splicewire/laravel-beam": "*"
     },
     "require-dev": {
         "orchestra/testbench": "^9.0|^10.0|^11.0",
@@ -21,8 +23,8 @@
         "branch-alias": { "dev-main": "1.0.x-dev" },
         "laravel": { "providers": ["Splicewire\\Beam\\Media\\BeamMediaServiceProvider"] },
         "package-topology": {
-            "because": "beam-media owns medialibrary and depends DOWN on it only; it never requires base beam (no reverse edge → no cycle with beam shedding media)",
-            "downOnly": ["spatie/laravel-medialibrary"]
+            "because": "beam-media owns medialibrary (DOWN) and — as a particle CONSUMER (HTTP-10: the MediaData #[ParticleResource] + the download/ingest #[ParticleOp]s) — depends DOWN on base beam for the particle machinery, exactly as the sibling arms (accounts/bookmarks/taxonomy) do. The ADR-0178 invariant is one-directional: base beam does NOT require beam-media (no reverse edge → no cycle); beam-media → beam is the natural media-arm direction.",
+            "downOnly": ["spatie/laravel-medialibrary", "splicewire/laravel-beam"]
         }
     },
     "repositories": [

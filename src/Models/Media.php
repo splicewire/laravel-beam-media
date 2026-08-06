@@ -22,4 +22,12 @@ class Media extends BaseMedia
     use HasUuid;
 
     protected $primaryKey = 'uuid';
+
+    // The `uuid` primary key is a non-incrementing string. Without these, Laravel applies its default
+    // int key-cast on set (`$media->uuid = '9b1d…'` would truncate to `9`), breaking the bare-uuid
+    // cell-reference contract (blast-radius #4). A host subclass (Tower's Media) also mixes in Laravel's
+    // `HasUuids`, which sets the same pair — declaring them on the base keeps the model correct standalone.
+    protected $keyType = 'string';
+
+    public $incrementing = false;
 }
