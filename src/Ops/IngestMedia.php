@@ -3,6 +3,7 @@
 namespace Splicewire\Beam\Media\Ops;
 
 use Illuminate\Http\Request;
+use Splicewire\Beam\Media\Contracts\MediaIngestor;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Particle\Attributes\ParticleOp;
 use Splicewire\Beam\Particle\OperationKind;
@@ -19,11 +20,12 @@ use Splicewire\Beam\Particle\OperationKind;
  * `source` (uploadPdf). Those ride HERE as a Write op invoked after creation, not a hand-rolled attach
  * controller.
  *
- * PLACEHOLDER handler (ticket 12): the op's input DTO is ticket 12's upload InputData
- * (`FragmentAttachInputData` / `PdfFragmentUploadInputData` — the `UploadedFile` part the relative `store`
- * consumes, plus the ingest params). Until ticket 12 fills it, `handle` is a no-op stub that returns the
- * media unchanged — the op EXISTS (declared + discoverable + mountable, proving the Write-kind path), but
- * runs no ingest yet. Ticket 12 replaces the body with the real pipeline dispatch.
+ * FILLED (HTTP-12): the op delegates to the host-bound {@see MediaIngestor} port. Its input is the request
+ * carrying the validated upload InputData fields (`FragmentAttachInputData` / `PdfFragmentUploadInputData`
+ * — the ingest params: also_ingest/silo_ids and auto_chunk_size/attach_only/source). beam-media stays
+ * Fragment-agnostic — it owns the generic operation, NOT the pipeline (embeddings / graph-triples / silo
+ * filing live in the Tower host, which binds the `MediaIngestor`). When no host has bound one, `handle` is
+ * a safe no-op returning the media unchanged (a bare beam-media install has no pipeline to run).
  */
 #[ParticleOp(
     resource: 'media',
@@ -35,9 +37,12 @@ class IngestMedia
 {
     public static function handle(Media $media, Request $request, mixed $actor): Media
     {
-        // ticket 12: dispatch the ingest pipeline from the upload InputData (also_ingest / silo_ids /
-        // auto_chunk_size / attach_only / source). Stub for now — the op is declared and mountable; the
-        // side-effect body lands with ticket 12's InputData.
-        return $media;
+        // Delegate to the host-bound ingest pipeline (Tower's TowerMediaIngestor). Unbound ⇒ safe no-op:
+        // a bare beam-media install has no pipeline, so the op returns the media unchanged.
+        if (! app()->bound(MediaIngestor::class)) {
+            return $media;
+        }
+
+        return app(MediaIngestor::class)->ingest($media, $request);
     }
 }

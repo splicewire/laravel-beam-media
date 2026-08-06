@@ -2,7 +2,9 @@
 
 namespace Splicewire\Beam\Media\Tests;
 
+use Illuminate\Http\Request;
 use ReflectionClass;
+use Splicewire\Beam\Media\Contracts\MediaIngestor;
 use Splicewire\Beam\Media\Data\MediaData;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Media\Ops\DownloadMedia;
@@ -103,5 +105,43 @@ class MediaParticleTest extends TestCase
         $this->assertSame(OperationKind::Write, $op->kind);
         $this->assertSame(Media::class, $op->model);
         $this->assertTrue(method_exists(IngestMedia::class, 'handle'));
+    }
+
+    public function test_ingest_op_is_a_noop_when_no_host_ingestor_is_bound(): void
+    {
+        // Fragment-agnostic contract (HTTP-12): a bare beam-media install has no pipeline; the op returns
+        // the media unchanged rather than erroring.
+        $this->assertFalse($this->app->bound(MediaIngestor::class));
+
+        $media = new Media;
+        $result = IngestMedia::handle($media, Request::create('/media/x/op/ingest', 'POST'), null);
+
+        $this->assertSame($media, $result);
+    }
+
+    public function test_ingest_op_delegates_to_the_host_bound_ingestor(): void
+    {
+        // When a host binds the MediaIngestor port (Tower's TowerMediaIngestor), the op delegates to it —
+        // beam-media owns the generic OPERATION; the host owns the pipeline. Input is the request.
+        $media = new Media;
+
+        $ingestor = new class implements MediaIngestor
+        {
+            public bool $called = false;
+
+            public function ingest(Media $media, Request $request): Media
+            {
+                $this->called = true;
+
+                return $media;
+            }
+        };
+        $this->app->instance(MediaIngestor::class, $ingestor);
+
+        $request = Request::create('/media/x/op/ingest', 'POST', ['also_ingest' => true]);
+        $result = IngestMedia::handle($media, $request, null);
+
+        $this->assertTrue($ingestor->called, 'IngestMedia must delegate to the bound MediaIngestor.');
+        $this->assertSame($media, $result);
     }
 }
