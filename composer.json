@@ -23,8 +23,14 @@
         "branch-alias": { "dev-main": "1.0.x-dev" },
         "laravel": { "providers": ["Splicewire\\Beam\\Media\\BeamMediaServiceProvider"] },
         "package-topology": {
-            "because": "beam-media owns medialibrary (DOWN) and — as a particle CONSUMER (HTTP-10: the MediaData #[ParticleResource] + the download/ingest #[ParticleOp]s) — depends DOWN on base beam for the particle machinery, exactly as the sibling arms (accounts/bookmarks/taxonomy) do. The ADR-0178 invariant is one-directional: base beam does NOT require beam-media (no reverse edge → no cycle); beam-media → beam is the natural media-arm direction.",
-            "downOnly": ["spatie/laravel-medialibrary", "splicewire/laravel-beam"]
+            "because": "beam-media is the media arm of the beam family — it OWNS the media public surface (Models\\Media, Data\\MediaData #[ParticleResource], the download/ingest #[ParticleOp]s, the 2 traits HasPrimaryImages/HasFeaturedImage, the central+tenant media migrations) extracted DOWN out of beam-core (HTTP-03 / ADR-0178). As a particle CONSUMER (HTTP-10) it depends DOWN on base beam for the particle machinery, exactly as the sibling arms (accounts/bookmarks/taxonomy) do — a plain in-estate require modelled here as mustRequire, NOT a downOnly from-target: per the evaluator, downOnly lists the HIGHER tiers a package must never reach UP into (a downOnly entry flags when subject REACHES it), so listing beam there wrongly forbade the legal beam-media → beam consume-down edge. spatie/laravel-medialibrary is likewise a down-require (owned DOWN, see the require block) but lives OUTSIDE the topology include-globs (rushing/*, splicewire/*, schemastud/*), so it is asserted only in composer require — not as a topology rule (mustRequire/downOnly both key off the in-scope graph). The ADR-0178 invariant is one-directional: base beam does NOT require beam-media (no reverse edge → no cycle); the media-arm direction beam-media → beam is the natural, legal consume-down edge. beam-media must NEVER reach UP into the tower / satellite tiers it is consumed by (the policy.noRequire guards below), mirroring accounts/taxonomy.",
+            "mustRequire": ["splicewire/laravel-beam"],
+            "policy": {
+                "noRequire": [
+                    { "fromPrefix": "splicewire/laravel-beam-media", "toPrefix": "splicewire/laravel-tower", "because": "the media arm is reusable by any beam site; it is consumed DOWN by the tower host (which subclasses Models\\Media + binds config('beam-media.model')) — beam-media never requires tower (no reverse/upward edge)" },
+                    { "fromPrefix": "splicewire/laravel-beam-media", "toPrefix": "splicewire/laravel-satellite", "because": "the foundation never reaches up into the consumer-app tier" }
+                ]
+            }
         }
     },
     "repositories": [
