@@ -52,6 +52,11 @@ use Splicewire\Beam\Particle\Attributes\ParticleResource;
     // filters today, so no capability is lost. `defaultSort` (null ⇒ `created_at`) orders the flat list.
     filterable: false,
     perPage: 20,
+    // Display singular for docs/titles: the inflector singularizes `media` to "Medium", so the download
+    // op titled "Medium Download" in the generated API docs. `media` is a mass noun here — one record is
+    // still "Media" — and the declaration is the honest place to say so. Display-only: `label` stays
+    // empty, so the resource remains REST-only (not framed).
+    singularLabel: 'Media',
 )]
 #[MapOutputName(SnakeCaseMapper::class)]
 class MediaData extends Data
