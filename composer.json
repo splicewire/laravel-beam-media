@@ -1,6 +1,6 @@
 {
     "name": "splicewire/laravel-beam-media",
-    "description": "The media arm of the beam family: the generic UUID-native Media model (extends spatie/laravel-medialibrary's base Media with a uuid primary key), the declarative primary-image traits (HasPrimaryImages / HasFeaturedImage), and the ubiquitous media table migrations (central + tenant). Extracted from beam-core (HTTP-03 / ADR-0178): beam-media owns spatie/laravel-medialibrary and requires it DOWN; base beam sheds the medialibrary dependency and does NOT require beam-media, and beam-media does NOT require base beam — no cycle. A host (Tower) subclasses Models\\Media and binds it via config('beam-media.model').",
+    "description": "The media arm of the beam family: the generic UUID-native Media model (extends spatie/laravel-medialibrary's base Media with a uuid primary key), the declarative primary-image traits (HasPrimaryImages / HasFeaturedImage), and the ubiquitous, publish-only shared/ media table migration. Extracted from beam-core (HTTP-03 / ADR-0178): beam-media owns spatie/laravel-medialibrary and requires it DOWN. beam-media also requires base beam DOWN (HTTP-10, as a particle consumer) — a one-way edge; base beam does NOT require beam-media back, so there is no cycle. A host (Tower) subclasses Models\\Media and binds it via config('beam-media.model').",
     "keywords": ["laravel", "schemastud", "beam", "media", "medialibrary", "spatie"],
     "license": "MIT",
     "authors": [{ "name": "Stephen Rushing", "email": "stephen@rushing.dev" }],
@@ -10,6 +10,7 @@
         "illuminate/support": "^11.0|^12.0|^13.0",
         "spatie/laravel-data": "^4.0|^5.0",
         "spatie/laravel-medialibrary": "^11.0",
+        "spatie/laravel-package-tools": "^1.16",
         "splicewire/laravel-beam": "*"
     },
     "require-dev": {

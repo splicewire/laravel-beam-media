@@ -4,6 +4,7 @@ namespace Splicewire\Beam\Media\Models;
 
 use Spatie\MediaLibrary\MediaCollections\Models\Concerns\HasUuid;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
+use Splicewire\Beam\Beam;
 
 /**
  * The beam-family base Media model — the default `model` for the media particle and the
@@ -30,4 +31,14 @@ class Media extends BaseMedia
     protected $keyType = 'string';
 
     public $incrementing = false;
+
+    /**
+     * `media` → `beam_media`, routed through the single table-prefix seam {@see Beam::table()}
+     * (beam-particle-rename convention). A property default cannot call config(), so the prefix is
+     * applied here — a host subclass (Tower's Media) inherits it for free.
+     */
+    public function getTable(): string
+    {
+        return Beam::table('media');
+    }
 }
