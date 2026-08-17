@@ -32,10 +32,20 @@ use Splicewire\Beam\Facades\Beam;
  *
  * `media` → `beam_media`, routed through the single table-prefix seam {@see Beam::table()}
  * (beam-particle-rename convention, matching every other beam table). Data-preserving rename (NOT
- * drop+create): where the pre-rename `media` already exists in THIS schema, it is renamed in place,
- * preserving every row. A fresh install (neither table present) creates the target directly. Guarded on
- * the CURRENT schema explicitly (not Schema::hasTable, which follows the tenant search_path — the
- * CLAUDE.md footgun) so the guarded logic is order-independent and idempotent across re-runs.
+ * drop+create): where the pre-rename `media` already exists in THIS schema AND carries beam's shape, it
+ * is renamed in place, preserving every row. A fresh install (neither table present) creates the target
+ * directly. Guarded on the CURRENT schema explicitly (not Schema::hasTable, which follows the tenant
+ * search_path — the CLAUDE.md footgun) so the guarded logic is order-independent and idempotent across
+ * re-runs.
+ *
+ * THE SHAPE GUARD IS LOAD-BEARING, and it is why {@see isBeamShaped()} exists. `media` is a generic
+ * table name and beam is not its only claimant: `lunarphp/core` ships its own `create_media_table` using
+ * spatie's default `$table->morphs('model')` — BIGINT `model_id` — stamped `2026_01_01_000011`, ahead of
+ * everything. An unconditional rename therefore adopted LUNAR's table as `beam_media` on any install
+ * carrying both, and the `uuidMorphs` create branch never ran. The result is the precise breakage the
+ * paragraph above says this file exists to prevent, reintroduced through the back door: `operator does
+ * not exist: uuid = bigint` as soon as a UUID owner queries its media. Do not weaken the guard back to a
+ * bare existence check.
  */
 return new class extends Migration
 {
@@ -49,11 +59,22 @@ return new class extends Migration
             return; // Already renamed / created in this schema — idempotent re-run.
         }
 
-        // Data-preserving rename of the pre-rename table when it is present in THIS schema.
+        // Data-preserving rename of the pre-rename table when it is present in THIS schema — but ONLY
+        // when that table is actually ours. `media` is a generic name and beam is not the only package
+        // that claims it: lunarphp/core ships its own `create_media_table` (spatie's default
+        // `$table->morphs('model')`, so a BIGINT `model_id`) at a 2026_01_01 timestamp that sorts ahead
+        // of everything. Renaming unconditionally adopted THAT table as `beam_media`, and the uuidMorphs
+        // create branch below never ran — the exact BIGINT-vs-UUID breakage this migration exists to
+        // prevent, reintroduced by the rename path. It fails as `operator does not exist: uuid = bigint`
+        // the moment a UUID owner queries its media.
         if ($this->existsInCurrentSchema($currentSchema, 'media')) {
-            Schema::rename('media', $this->target());
+            if ($this->isBeamShaped($currentSchema, 'media')) {
+                Schema::rename('media', $this->target());
 
-            return;
+                return;
+            }
+
+            // Someone else's `media`. Leave it alone and create ours alongside it.
         }
 
         // Fresh install: neither name present in this schema — create the target directly.
@@ -94,6 +115,28 @@ return new class extends Migration
     private function target(): string
     {
         return Beam::table('media');
+    }
+
+    /**
+     * Whether an existing `media` table is BEAM's pre-rename table rather than another package's.
+     *
+     * The discriminator is the one thing beam deliberately differs from spatie's stub on: `model_id`
+     * is a UUID here (`uuidMorphs`) and a BIGINT everywhere else (`morphs`). That is exactly the
+     * column whose type this migration exists to guarantee, so it is the honest thing to test — a
+     * table we would refuse to create is a table we must refuse to adopt.
+     *
+     * Unknown/unsupported driver → false: declining to rename leaves a foreign table untouched and
+     * creates ours alongside, which is recoverable. Renaming the wrong table is not.
+     */
+    private function isBeamShaped(?string $schema, string $table): bool
+    {
+        if (! Schema::hasColumn($table, 'model_id')) {
+            return false;
+        }
+
+        $type = Schema::getColumnType($table, 'model_id');
+
+        return in_array(strtolower((string) $type), ['uuid', 'guid'], true);
     }
 
     /**
