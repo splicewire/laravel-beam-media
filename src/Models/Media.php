@@ -4,7 +4,7 @@ namespace Splicewire\Beam\Media\Models;
 
 use Spatie\MediaLibrary\MediaCollections\Models\Concerns\HasUuid;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
-use Splicewire\Beam\Beam;
+use Splicewire\Beam\Facades\Beam;
 
 /**
  * The beam-family base Media model — the default `model` for the media particle and the
