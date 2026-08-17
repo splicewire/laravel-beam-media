@@ -32,20 +32,31 @@ use Splicewire\Beam\Facades\Beam;
  *
  * `media` → `beam_media`, routed through the single table-prefix seam {@see Beam::table()}
  * (beam-particle-rename convention, matching every other beam table). Data-preserving rename (NOT
- * drop+create): where the pre-rename `media` already exists in THIS schema AND carries beam's shape, it
- * is renamed in place, preserving every row. A fresh install (neither table present) creates the target
- * directly. Guarded on the CURRENT schema explicitly (not Schema::hasTable, which follows the tenant
+ * drop+create): where a pre-rename `media` already exists in THIS schema it is renamed in place,
+ * preserving every row, then converged to beam's column shape. A fresh install (neither table present)
+ * creates the target directly. Guarded on the CURRENT schema explicitly (not Schema::hasTable, which follows the tenant
  * search_path — the CLAUDE.md footgun) so the guarded logic is order-independent and idempotent across
  * re-runs.
  *
- * THE SHAPE GUARD IS LOAD-BEARING, and it is why {@see isBeamShaped()} exists. `media` is a generic
- * table name and beam is not its only claimant: `lunarphp/core` ships its own `create_media_table` using
- * spatie's default `$table->morphs('model')` — BIGINT `model_id` — stamped `2026_01_01_000011`, ahead of
- * everything. An unconditional rename therefore adopted LUNAR's table as `beam_media` on any install
- * carrying both, and the `uuidMorphs` create branch never ran. The result is the precise breakage the
- * paragraph above says this file exists to prevent, reintroduced through the back door: `operator does
- * not exist: uuid = bigint` as soon as a UUID owner queries its media. Do not weaken the guard back to a
- * bare existence check.
+ * ONE media table, and the conversion is load-bearing — see {@see convergeModelIdToUuid()}. `media` is a
+ * generic table name and beam is not its only claimant: `lunarphp/core` ships its own
+ * `create_media_table` using spatie's default `$table->morphs('model')` — BIGINT `model_id` — stamped
+ * `2026_01_01_000011`, ahead of everything. The rename therefore adopts LUNAR's table, and without the
+ * conversion the `uuidMorphs` create branch never runs: `operator does not exist: uuid = bigint` the
+ * moment a UUID owner queries its media.
+ *
+ * We ADOPT rather than create a second table beside it, deliberately. The host configures ONE spatie
+ * `media_model` (beam's, resolving to this table), so a second physical media table would be an orphan
+ * nothing ever reads — dead schema that still has to be explained to every future reader.
+ *
+ * What adoption costs, stated honestly: Lunar's own media-owning models (Asset, Brand, Collection,
+ * Product, ProductOption, ProductOptionValue) are BIGINT-keyed, so they cannot attach media to this
+ * table. Nothing in the estate uses them today. Lunar v2 offers no model-substitution seam — its
+ * `ModelManifest` handles route binding and morph maps only, and a real `media()` method beats
+ * `Model::resolveRelationUsing()` — so making them work would mean either a UUID column on those tables
+ * plus a subclass per model that overrides `media()` with a `$localKey` (spatie attaches through the
+ * relation, `$model->media()->save($media)`, so that seam does work), or a change upstream. Do that when
+ * something actually needs Lunar-side media, not before.
  */
 return new class extends Migration
 {
@@ -56,25 +67,24 @@ return new class extends Migration
             : null;
 
         if ($this->existsInCurrentSchema($currentSchema, $this->target())) {
-            return; // Already renamed / created in this schema — idempotent re-run.
+            // Already renamed / created in this schema. Still converge the column: an install that
+            // adopted a foreign `media` before this guard existed carries a BIGINT `model_id`.
+            $this->convergeModelIdToUuid($this->target());
+
+            return;
         }
 
-        // Data-preserving rename of the pre-rename table when it is present in THIS schema — but ONLY
-        // when that table is actually ours. `media` is a generic name and beam is not the only package
-        // that claims it: lunarphp/core ships its own `create_media_table` (spatie's default
-        // `$table->morphs('model')`, so a BIGINT `model_id`) at a 2026_01_01 timestamp that sorts ahead
-        // of everything. Renaming unconditionally adopted THAT table as `beam_media`, and the uuidMorphs
-        // create branch below never ran — the exact BIGINT-vs-UUID breakage this migration exists to
-        // prevent, reintroduced by the rename path. It fails as `operator does not exist: uuid = bigint`
-        // the moment a UUID owner queries its media.
+        // Data-preserving rename of the pre-rename table when it is present in THIS schema. `media` is a
+        // generic name and beam is not its only claimant: lunarphp/core ships its own
+        // `create_media_table` using spatie's default `$table->morphs('model')` — a BIGINT `model_id` —
+        // stamped 2026_01_01, ahead of everything. We ADOPT that table rather than sit beside it: the
+        // app configures ONE spatie `media_model`, so a second physical media table would be an orphan
+        // nothing ever reads. Adoption is completed by converging the column to UUID below.
         if ($this->existsInCurrentSchema($currentSchema, 'media')) {
-            if ($this->isBeamShaped($currentSchema, 'media')) {
-                Schema::rename('media', $this->target());
+            Schema::rename('media', $this->target());
+            $this->convergeModelIdToUuid($this->target());
 
-                return;
-            }
-
-            // Someone else's `media`. Leave it alone and create ours alongside it.
+            return;
         }
 
         // Fresh install: neither name present in this schema — create the target directly.
@@ -118,25 +128,47 @@ return new class extends Migration
     }
 
     /**
-     * Whether an existing `media` table is BEAM's pre-rename table rather than another package's.
+     * Bring an adopted table's `model_id` to UUID — the column type this file exists to guarantee.
      *
-     * The discriminator is the one thing beam deliberately differs from spatie's stub on: `model_id`
-     * is a UUID here (`uuidMorphs`) and a BIGINT everywhere else (`morphs`). That is exactly the
-     * column whose type this migration exists to guarantee, so it is the honest thing to test — a
-     * table we would refuse to create is a table we must refuse to adopt.
+     * Only Postgres needs (or supports) this: it is the strict driver where a BIGINT `model_id`
+     * actually breaks, and sqlite/mysql's looser typing makes the ALTER both unnecessary and, on
+     * sqlite, unsupported. Already-UUID is a no-op, so re-runs are free.
      *
-     * Unknown/unsupported driver → false: declining to rename leaves a foreign table untouched and
-     * creates ours alongside, which is recoverable. Renaming the wrong table is not.
+     * A non-empty table is NOT converted silently. Postgres will reject `USING model_id::uuid` on any
+     * value that is not a UUID, and that error is the correct outcome: rows keyed by a foreign
+     * package's BIGINT ids cannot be reinterpreted as beam's UUIDs, and pretending otherwise would
+     * silently orphan them. The message below says so, so an operator gets a decision rather than a
+     * cast error.
      */
-    private function isBeamShaped(?string $schema, string $table): bool
+    private function convergeModelIdToUuid(string $table): void
     {
-        if (! Schema::hasColumn($table, 'model_id')) {
-            return false;
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
         }
 
-        $type = Schema::getColumnType($table, 'model_id');
+        if (! Schema::hasColumn($table, 'model_id')) {
+            return;
+        }
 
-        return in_array(strtolower((string) $type), ['uuid', 'guid'], true);
+        if (strtolower((string) Schema::getColumnType($table, 'model_id')) === 'uuid') {
+            return;
+        }
+
+        $rows = DB::table($table)->count();
+
+        if ($rows > 0) {
+            throw new RuntimeException(
+                "Refusing to convert [{$table}].model_id to UUID: the table holds {$rows} row(s) keyed "
+                .'by a non-UUID owner id (it was adopted from another package, most likely '
+                ."lunarphp/core's `media`). Those rows cannot be reinterpreted as beam UUIDs. Decide "
+                .'explicitly: migrate or discard them, then re-run. Beam is UUID-native and this column '
+                .'is the constraint that keeps `uuid = bigint` from reaching a strict driver.'
+            );
+        }
+
+        // Via ::text, not a bare ::uuid — Postgres has no bigint→uuid coercion and rejects the direct
+        // form at plan time even against an empty table. The index Postgres rebuilds itself.
+        DB::statement("ALTER TABLE {$table} ALTER COLUMN model_id TYPE uuid USING model_id::text::uuid");
     }
 
     /**
