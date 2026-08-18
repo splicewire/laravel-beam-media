@@ -22,10 +22,10 @@ use Splicewire\Beam\Install\BeamInstallManifest;
  * `registerSharedMigrationsPath()` — not as a hand-duplicated flat+tenant file pair. The two
  * copies used to drift independently by construction; one file in one directory can't.
  *
- * Config seam: `config('beam-media.model')` is the media-model binding. This provider feeds
+ * Config seam: `config('beam.media.model')` is the media-model binding. This provider feeds
  * it into spatie's `media-library.media_model` so medialibrary mints the configured class —
  * unless the host has already bound its own `media_model` (the host wins). Tower overrides
- * `config('beam-media.model')` with its Media subclass.
+ * `config('beam.media.model')` with its Media subclass.
  */
 class BeamMediaServiceProvider extends PackageServiceProvider
 {
@@ -33,7 +33,7 @@ class BeamMediaServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('laravel-beam-media')
-            ->hasConfigFile('beam-media')
+            ->hasConfigFile('beam/media')
             // Publish-only .stub migration (NOT ->discoversMigrations(), which loads at runtime).
             ->hasMigrations([
                 'shared/create_media_table',
@@ -43,7 +43,7 @@ class BeamMediaServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         // Deliberately BOOT-phase, not packageRegistered(): a host (Tower) overrides
-        // config('beam-media.model') from its OWN packageRegistered(), and every provider's
+        // config('beam.media.model') from its OWN packageRegistered(), and every provider's
         // register phase completes before any provider's boot phase runs — reading the config
         // here (not at register-time) guarantees the host's override has already landed.
         $this->bootMediaModelBinding();
@@ -73,7 +73,7 @@ class BeamMediaServiceProvider extends PackageServiceProvider
      */
     protected function bootMediaModelBinding(): void
     {
-        $model = config('beam-media.model');
+        $model = config('beam.media.model');
 
         if ($model && config('media-library.media_model') === SpatieBaseMedia::class) {
             config(['media-library.media_model' => $model]);
