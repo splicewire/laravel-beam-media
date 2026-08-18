@@ -5,6 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Splicewire\Beam\Facades\Beam;
+use Splicewire\Beam\Schema\ConvergentTable;
 
 /**
  * The spatie/laravel-medialibrary `media` table — owned by beam-media (extracted from beam-core, HTTP-03 /
@@ -66,48 +67,51 @@ return new class extends Migration
             ? DB::selectOne('select current_schema() as schema')->schema
             : null;
 
-        if ($this->existsInCurrentSchema($currentSchema, $this->target())) {
-            // Already renamed / created in this schema. Still converge the column: an install that
-            // adopted a foreign `media` before this guard existed carries a BIGINT `model_id`.
-            $this->convergeModelIdToUuid($this->target());
-
-            return;
-        }
-
         // Data-preserving rename of the pre-rename table when it is present in THIS schema. `media` is a
         // generic name and beam is not its only claimant: lunarphp/core ships its own
         // `create_media_table` using spatie's default `$table->morphs('model')` — a BIGINT `model_id` —
         // stamped 2026_01_01, ahead of everything. We ADOPT that table rather than sit beside it: the
         // app configures ONE spatie `media_model`, so a second physical media table would be an orphan
         // nothing ever reads. Adoption is completed by converging the column to UUID below.
-        if ($this->existsInCurrentSchema($currentSchema, 'media')) {
+        if (! $this->existsInCurrentSchema($currentSchema, $this->target())
+            && $this->existsInCurrentSchema($currentSchema, 'media')) {
             Schema::rename('media', $this->target());
-            $this->convergeModelIdToUuid($this->target());
-
-            return;
         }
 
-        // Fresh install: neither name present in this schema — create the target directly.
-        Schema::create($this->target(), function (Blueprint $table): void {
-            $table->id();
+        // BEFORE the guard, not after: this is the one place in the estate that upgrades a table
+        // THROUGH a type conflict (the trigger the convergent-guard convention names for a per-column
+        // `->change()`), and `assert()` below would otherwise refuse an adopted BIGINT `model_id` as a
+        // `type` conflict rather than let this conversion repair it. Kept behind the current-schema
+        // predicate so a tenant pass never reaches through the search_path and alters the CENTRAL copy.
+        if ($this->existsInCurrentSchema($currentSchema, $this->target())) {
+            $this->convergeModelIdToUuid($this->target());
+        }
 
-            $table->uuidMorphs('model');
-            $table->uuid()->nullable()->unique();
-            $table->string('collection_name');
-            $table->string('name');
-            $table->string('file_name');
-            $table->string('mime_type')->nullable();
-            $table->string('disk');
-            $table->string('conversions_disk')->nullable();
-            $table->unsignedBigInteger('size');
-            $table->json('manipulations');
-            $table->json('custom_properties');
-            $table->json('generated_conversions');
-            $table->json('responsive_images');
-            $table->unsignedInteger('order_column')->nullable()->index();
+        ConvergentTable::named($this->target())
+            // The current-schema predicate survives the conversion — see its docblock below for why
+            // Schema::hasTable() is the wrong question under schema-per-tenant.
+            ->existsUsing(fn (string $table): bool => $this->existsInCurrentSchema($currentSchema, $table))
+            ->define(function (Blueprint $table): void {
+                $table->id();
 
-            $table->nullableTimestamps();
-        });
+                $table->uuidMorphs('model');
+                $table->uuid()->nullable()->unique();
+                $table->string('collection_name');
+                $table->string('name');
+                $table->string('file_name');
+                $table->string('mime_type')->nullable();
+                $table->string('disk');
+                $table->string('conversions_disk')->nullable();
+                $table->unsignedBigInteger('size');
+                $table->json('manipulations');
+                $table->json('custom_properties');
+                $table->json('generated_conversions');
+                $table->json('responsive_images');
+                $table->unsignedInteger('order_column')->nullable()->index();
+
+                $table->nullableTimestamps();
+            })
+            ->assert();
     }
 
     public function down(): void
