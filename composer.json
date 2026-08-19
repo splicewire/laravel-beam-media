@@ -11,7 +11,8 @@
         "spatie/laravel-data": "^4.0|^5.0",
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-package-tools": "^1.16",
-        "splicewire/laravel-beam": "*"
+        "splicewire/laravel-beam": "*",
+        "rushing/laravel-schema-convergence": "*"
     },
     "require-dev": {
         "orchestra/testbench": "^9.0|^10.0|^11.0",
