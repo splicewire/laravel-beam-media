@@ -1,9 +1,21 @@
 {
     "name": "splicewire/laravel-beam-media",
     "description": "The media arm of the beam family: the generic UUID-native Media model (extends spatie/laravel-medialibrary's base Media with a uuid primary key), the declarative primary-image traits (HasPrimaryImages / HasFeaturedImage), and the ubiquitous, publish-only shared/ media table migration. Extracted from beam-core (HTTP-03 / ADR-0178): beam-media owns spatie/laravel-medialibrary and requires it DOWN. beam-media also requires base beam DOWN (HTTP-10, as a particle consumer) — a one-way edge; base beam does NOT require beam-media back, so there is no cycle. A host (Tower) subclasses Models\\Media and binds it via config('beam-media.model').",
-    "keywords": ["laravel", "schemastud", "beam", "media", "medialibrary", "spatie"],
+    "keywords": [
+        "laravel",
+        "schemastud",
+        "beam",
+        "media",
+        "medialibrary",
+        "spatie"
+    ],
     "license": "MIT",
-    "authors": [{ "name": "Stephen Rushing", "email": "stephen@rushing.dev" }],
+    "authors": [
+        {
+            "name": "Stephen Rushing",
+            "email": "stephen@rushing.dev"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "illuminate/contracts": "^11.0|^12.0|^13.0",
@@ -15,36 +27,78 @@
         "rushing/laravel-schema-convergence": "*"
     },
     "require-dev": {
+        "laravel/pint": "^1.0",
         "orchestra/testbench": "^9.0|^10.0|^11.0",
         "phpunit/phpunit": "^11.0|^12.0",
-        "laravel/pint": "^1.0"
+        "wikimedia/composer-merge-plugin": "^2.1"
     },
-    "autoload": { "psr-4": { "Splicewire\\Beam\\Media\\": "src/" } },
-    "autoload-dev": { "psr-4": { "Splicewire\\Beam\\Media\\Tests\\": "tests/" } },
+    "autoload": {
+        "psr-4": {
+            "Splicewire\\Beam\\Media\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Splicewire\\Beam\\Media\\Tests\\": "tests/"
+        }
+    },
     "extra": {
-        "branch-alias": { "dev-main": "1.0.x-dev" },
-        "laravel": { "providers": ["Splicewire\\Beam\\Media\\BeamMediaServiceProvider"] },
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        },
+        "laravel": {
+            "providers": [
+                "Splicewire\\Beam\\Media\\BeamMediaServiceProvider"
+            ]
+        },
         "package-topology": {
             "because": "beam-media is the media arm of the beam family — it OWNS the media public surface (Models\\Media, Data\\MediaData #[ParticleResource], the download/ingest #[ParticleOp]s, the 2 traits HasPrimaryImages/HasFeaturedImage, the central+tenant media migrations) extracted DOWN out of beam-core (HTTP-03 / ADR-0178). As a particle CONSUMER (HTTP-10) it depends DOWN on base beam for the particle machinery, exactly as the sibling arms (accounts/bookmarks/taxonomy) do — a plain in-estate require modelled here as mustRequire, NOT a downOnly from-target: per the evaluator, downOnly lists the HIGHER tiers a package must never reach UP into (a downOnly entry flags when subject REACHES it), so listing beam there wrongly forbade the legal beam-media → beam consume-down edge. spatie/laravel-medialibrary is likewise a down-require (owned DOWN, see the require block) but lives OUTSIDE the topology include-globs (rushing/*, splicewire/*, schemastud/*), so it is asserted only in composer require — not as a topology rule (mustRequire/downOnly both key off the in-scope graph). The ADR-0178 invariant is one-directional: base beam does NOT require beam-media (no reverse edge → no cycle); the media-arm direction beam-media → beam is the natural, legal consume-down edge. beam-media must NEVER reach UP into the tower / satellite tiers it is consumed by (the policy.noRequire guards below), mirroring accounts/taxonomy.",
-            "mustRequire": ["splicewire/laravel-beam"],
+            "mustRequire": [
+                "splicewire/laravel-beam"
+            ],
             "policy": {
                 "noRequire": [
-                    { "fromPrefix": "splicewire/laravel-beam-media", "toPrefix": "splicewire/laravel-tower", "because": "the media arm is reusable by any beam site; it is consumed DOWN by the tower host (which subclasses Models\\Media + binds config('beam-media.model')) — beam-media never requires tower (no reverse/upward edge)" },
-                    { "fromPrefix": "splicewire/laravel-beam-media", "toPrefix": "splicewire/laravel-satellite", "because": "the foundation never reaches up into the consumer-app tier" }
+                    {
+                        "fromPrefix": "splicewire/laravel-beam-media",
+                        "toPrefix": "splicewire/laravel-tower",
+                        "because": "the media arm is reusable by any beam site; it is consumed DOWN by the tower host (which subclasses Models\\Media + binds config('beam-media.model')) — beam-media never requires tower (no reverse/upward edge)"
+                    },
+                    {
+                        "fromPrefix": "splicewire/laravel-beam-media",
+                        "toPrefix": "splicewire/laravel-satellite",
+                        "because": "the foundation never reaches up into the consumer-app tier"
+                    }
                 ]
             }
+        },
+        "merge-plugin": {
+            "include": [
+                "composer.local.json"
+            ]
         }
     },
     "repositories": [
-        { "type": "path", "url": "../*", "options": { "symlink": true } },
-        { "type": "path", "url": "../../rushing/*", "options": { "symlink": true } },
-        { "type": "path", "url": "../../schemastud/*", "options": { "symlink": true } }
+        {
+            "type": "git",
+            "url": "https://github.com/stephenr85/laravel-schema-convergence.git"
+        },
+        {
+            "type": "git",
+            "url": "https://github.com/splicewire/laravel-beam.git"
+        }
     ],
     "minimum-stability": "dev",
     "prefer-stable": true,
-    "scripts": { "test": "@php vendor/bin/phpunit", "pint": "@php -d memory_limit=512M vendor/bin/pint" },
+    "scripts": {
+        "test": "@php vendor/bin/phpunit",
+        "pint": "@php -d memory_limit=512M vendor/bin/pint"
+    },
     "config": {
         "sort-packages": true,
-        "allow-plugins": { "pestphp/pest-plugin": true, "php-http/discovery": true }
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true,
+            "wikimedia/composer-merge-plugin": true
+        }
     }
 }
