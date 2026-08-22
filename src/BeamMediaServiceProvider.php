@@ -34,9 +34,10 @@ class BeamMediaServiceProvider extends PackageServiceProvider
         $package
             ->name('laravel-beam-media')
             ->hasConfigFile('beam/media')
-            // Publish-only .stub migration (NOT ->discoversMigrations(), which loads at runtime).
+            // Publish-only .stub migrations (NOT ->discoversMigrations(), which loads at runtime).
             ->hasMigrations([
                 'shared/create_media_table',
+                'shared/create_provider_media_jobs_table',
             ]);
     }
 

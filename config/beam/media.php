@@ -1,6 +1,7 @@
 <?php
 
 use Splicewire\Beam\Media\Models\Media;
+use Splicewire\Beam\Media\Models\ProviderMediaJob;
 
 return [
     /*
@@ -12,4 +13,13 @@ return [
      * the binding when the host hasn't.
      */
     'model' => Media::class,
+
+    /*
+     * The ProviderMediaJob model — the record of a unit of media work dispatched outside this
+     * application. Same subclass seam as `model` above, and load-bearing for the same reason:
+     * `handle` is opaque JSON here because beam-media must not name a `rushing/laravel-prism-plus`
+     * type (that edge would land on every beam host). A host driving an async vendor subclasses
+     * ProviderMediaJob, adds the typed handle rehydration, and points this key at its own class.
+     */
+    'job_model' => ProviderMediaJob::class,
 ];

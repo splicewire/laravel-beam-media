@@ -1,0 +1,151 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Rushing\SchemaConvergence\ConvergentTable;
+
+/**
+ * CHARTER — read this as an EXCLUSION, not a description:
+ *
+ *   A unit of work dispatched to a party outside this application that produces a MEDIA ARTIFACT.
+ *   A producer of a MODEL, a DOCUMENT, or a REPORT does not belong here — see `training_runs`,
+ *   `fragment_transformations`, `eval_runs`, `circuit_runs`.
+ *
+ * The media criterion is the whole reason this table can be one table. Six produce-an-artifact tables
+ * exist in the estate and they split cleanly on whether the thing produced is media: `video_jobs`, the
+ * music produced-take and `training_conversions` do; `training_runs` (a model), `fragment_transformations`
+ * (text) and `circuit_runs`/`eval_runs` (run records + reports) do not. So "a render" is BROADER than "a
+ * media artifact", and this table is chartered to the media half by exclusion rather than by an arbitrary
+ * stop. `training_conversions` qualifies and is deliberately deferred, not overlooked.
+ *
+ * WHY NOT "render": that word is exhausted in this estate — `RenderMusicComposition`, `RenderInvocable`,
+ * `RenderBrief`, `RenderLedger`, `RenderStateApplier`, `HostRenderer`, `RenderResult`, `RenderMode`,
+ * `render_status`, `meta.render_wire`, `music.render`, `music.render.voice`. A table named for it would sit
+ * under all of them meaning something narrower than any. `provider_media_jobs` names both scoping axes
+ * instead: `provider` — someone outside is doing the work; `media` — the output is a media artifact.
+ * *Render* is the verb the host uses; this is the record of outsourced media work.
+ *
+ * TWO ROWS, ONE SHAPE, JOINED ON `run_id`. Neither side of the produced-take wire keeps a history today:
+ * the satellite overwrites `meta.render_wire` per Composition and the platform overwrites
+ * `composition.render`, so re-committing twice loses the first take from BOTH databases. The same shape is
+ * therefore written on both sides of the connector and joined on `run_id`:
+ *
+ *   - the SATELLITE row is THE TAKE — product state (what takes a song has, what was asked for, what it
+ *     derives from). It survives the tenant leaving the platform.
+ *   - the PLATFORM row is THE VENDOR CALL — metering and replay evidence. It is the only side that can
+ *     hold the guard's substitutions and the vendor take id, because those exist only where the call is
+ *     made, and it is authoritative for anything vendor-shaped.
+ *
+ * `provider` IS RELATIVE TO THE RECORDER, and that is not a smell. From the satellite, the party doing the
+ * work outside is the platform (`provider='splicewire'`, `provider_job_id` = the connector `run_id`); from
+ * the platform it is the vendor (`provider='elevenlabs'|'fal'`, `provider_job_id` = the vendor `song-id` /
+ * fal request id). One column, one meaning — "who is doing this for me" — read from where it was written.
+ *
+ * `provider_job_id`'s PRESENCE IS THE ASYNC INDICATOR. Null means there is nothing outside to reconcile,
+ * so the row is BORN TERMINAL. ElevenLabs music is synchronous (it implements the bytes-out
+ * `MusicComposeProvider`, not the async `MusicProvider`), and no synthetic already-completed job handle is
+ * minted to paper over that — a null `handle` on a born-terminal row is the honest record.
+ *
+ * NO `status` COLUMN. Status is beam's own (`spatie/laravel-model-status`, already a beam-core dependency),
+ * carried on the `statuses` table via {@see \Splicewire\Beam\Models\HasStatuses}. Deliberately NOT
+ * `WorkflowManaged`: `laravel-beam-workflows` requires `laravel-beam`, so beam cannot depend on workflows
+ * without a cycle. A host that wants workflow governance layers it on its own subclass.
+ *
+ * THE ARTIFACT IS A `Media` RELATION, NOT COLUMNS. Five of `video_jobs`' columns (`result_disk`,
+ * `result_path`, `mime`, `file_size`, and `resolution` beside them) are a hand-rolled media row; this
+ * package already owns the real one. `result_url` SURVIVES, re-chartered as the VENDOR'S SHORT-LIVED URL —
+ * provenance, not storage. Anything genuinely per-medium that those columns carried (video's `resolution`)
+ * belongs in `params`, which is where what-was-asked-for already lives.
+ *
+ * `params` IS SEALED AT SUBMIT. Everything SENT goes in; nothing MEASURED does. A production-time record
+ * mutated hours later is not a replay source, so post-render measurements land on the produced node
+ * (`Clip.meta`), never back into `params`.
+ *
+ * WRITTEN AT SUBMIT, WHICH IS THE POINT. This table inherits — and strengthens — `RenderLedger`'s
+ * never-lose-a-billed-take guarantee. That guarantee's real content is *the vendor id arrives in a response
+ * header and must not die with the process*. The ledger swallowed its own write failures because
+ * bookkeeping trailed an already-billed call; writing the row at submit removes the window entirely, so the
+ * best-effort swallow stops being needed rather than being inherited.
+ *
+ * TIER `shared/`, MATCHING `media`. A job row pointing at a media row wants the same schema, and a
+ * `tenant`-only table with a FK to a `shared` one is fragile under schema-per-tenant. `shared/` does NOT
+ * mean "one central copy" — beam-tenancy's `registerSharedMigrationsPath()` applies it in BOTH the central
+ * and every tenant pass, so this is one file rather than a hand-duplicated flat+tenant pair that drifts.
+ *
+ * Table name is BARE, unlike this package's sibling `media` → `beam_media`. The prefix seam
+ * ({@see \Splicewire\Beam\Facades\Beam::table()}) exists for GENERIC names with other claimants —
+ * `media` is adopted from `lunarphp/core`'s copy. `provider_media_jobs` has no other claimant, and the
+ * estate's norm for a distinctive sibling-arm table is bare (`lineages`, `training_runs`,
+ * `fragment_transformations`).
+ */
+return new class extends Migration
+{
+    public function up(): void
+    {
+        ConvergentTable::named('provider_media_jobs')
+            ->define(function (Blueprint $table) {
+                $table->uuid('id')->primary();
+
+                // Which medium this job produces — `music`, `video`, … A bare string: the vocabulary is
+                // the host's, and this package never validates it (the same call the lineage mechanism
+                // makes for `producer_kind` and the steering row makes for `axis`).
+                $table->string('medium');
+
+                // What was asked for, in the requester's own words. Nullable because not every medium has
+                // one: a video job carries a prompt, a music take carries a composition plan (which lives
+                // in `params.wire_payload`, resolved and exact).
+                $table->text('prompt')->nullable();
+
+                $table->string('model');
+
+                // Relative to the recorder — see the class docblock. Satellite: 'splicewire'.
+                // Platform: 'elevenlabs' | 'fal'.
+                $table->string('provider');
+
+                // Presence is the async indicator; null ⇒ born terminal, nothing to reconcile.
+                $table->string('provider_job_id')->nullable();
+
+                // The join across the two rows. It already spans both sides of the connector.
+                $table->string('run_id')->nullable();
+
+                // Opaque JSON. Real on an async vendor path (a serialized prism-plus job handle — the
+                // vendor's own status/result/cancel URLs, the unit of continuation), null on a synchronous
+                // one. beam-media MUST NOT know what a prism-plus job is: serializing and rehydrating it
+                // is the host subclass's job, which is exactly why this package needs no prism-plus edge.
+                $table->json('handle')->nullable();
+
+                // Sealed at submit: everything sent, nothing measured.
+                $table->json('params')->nullable();
+
+                // The VENDOR's short-lived URL — provenance, not storage. The durable artifact is the
+                // `media` relation.
+                $table->string('result_url')->nullable();
+
+                $table->unsignedInteger('seconds')->nullable();
+
+                $table->text('error')->nullable();
+                $table->unsignedInteger('poll_attempts')->default(0);
+                $table->timestamp('completed_at')->nullable();
+
+                // Who this job belongs to in the host's own vocabulary (a Song, a Composition, a Fragment).
+                $table->nullableUuidMorphs('owner');
+
+                // The node the artifact was attached to on completion (a timeline `Clip`, …). Nullable
+                // because it is not known at submit, which is when the row is written.
+                $table->nullableUuidMorphs('produced');
+
+                $table->timestamps();
+
+                $table->index('medium');
+                $table->index('provider_job_id');
+                $table->index('run_id');
+            })
+            ->assert();
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('provider_media_jobs');
+    }
+};
