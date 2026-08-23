@@ -34,8 +34,14 @@ use Splicewire\Beam\Models\HasStatuses;
  * THIS CLASS IS A SUBCLASS POINT, and the seam is load-bearing rather than decorative. `handle` is
  * deliberately opaque `array` here: beam-media must not know what a `rushing/laravel-prism-plus` job is,
  * because naming that type would put a prism-plus edge on the media arm and therefore on every beam host.
- * A host that drives an async vendor subclasses this, binds its class via `config('beam.media.job_model')`,
- * and adds the typed rehydration there — exactly as Tower's `VideoJob::handle()` already does.
+ * A host that drives an async vendor subclasses this and adds the typed rehydration there — exactly as
+ * Tower's `VideoJob::handle()` does.
+ *
+ * `config('beam.media.job_model')` is how a host names that subclass to this package, and it is currently
+ * UNCLAIMED, deliberately: Tower's only async media driver is video, so its subclass is scoped to one
+ * medium, and binding a medium-scoped class as THE job model would mint every other medium's rows as that
+ * class and then hide them behind its scope. The seam is for a host with a medium-agnostic driver; a
+ * per-medium subclass is named by its own call sites instead. Nothing in this package resolves the key yet.
  *
  * @property string $id
  * @property string $medium
