@@ -35,7 +35,7 @@ use Splicewire\Beam\Particle\Attributes\ParticleResource;
  */
 #[ParticleResource(
     key: 'media',
-    model: Media::class,
+    backing: Media::class,
     // `data:`/`input:` omitted — this class IS the read projection (single-class default); the
     // convention `project()` below takes precedence. A standalone metadata-only create/update carries
     // no JSON body schema yet (the upload file part is the ingest op's InputData, ticket 12).
