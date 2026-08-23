@@ -2,6 +2,7 @@
 
 namespace Splicewire\Beam\Media\Tests;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use ReflectionClass;
@@ -21,6 +22,37 @@ class ProviderMediaJobTest extends TestCase
         parent::setUp();
 
         $this->loadJobsMigration();
+    }
+
+    /**
+     * The morph alias. Registered while the table was still empty in every schema in the estate
+     * (voice-profile 29's install was the first host to carry this package at all) — an alias is free
+     * to choose exactly once, and after the first row is written moving it costs a data migration
+     * across every `*_type` column that points here AND every ADR-0118 permission token minted under
+     * its prefix.
+     */
+    public function test_the_base_job_model_has_a_morph_alias(): void
+    {
+        $this->assertSame('provider_media_job', Relation::getMorphAlias(ProviderMediaJob::class));
+    }
+
+    /**
+     * The alias is keyed on the BASE class and a host subclass is deliberately NOT swept in. Keying it
+     * on `config('beam.media.job_model')` instead would leave the base unaliased whenever a host
+     * configured its own class — two tokens for one table, which is the failure the alias exists to
+     * prevent. A morph map is alias => class; one alias cannot cover two classes, so the choice is
+     * forced rather than preferred.
+     *
+     * A host names its own subclass from its own provider, which is the estate's worked idiom: tower's
+     * own service provider declares `'media'` and `'video_job'` for tower's subclasses while their
+     * packages alias what they own. Named in prose, not `{@see}` — beam-media must not import a symbol
+     * from a package downstream of it, and pint turns an FQN in a docblock into a real `use`.
+     */
+    public function test_a_host_subclass_is_left_for_the_host_to_alias(): void
+    {
+        // getMorphAlias() returns the class-string itself when unmapped — the FQCN fallback.
+        $this->assertSame(HostJobModel::class, Relation::getMorphAlias(HostJobModel::class));
+        $this->assertSame('provider_media_job', Relation::getMorphAlias(ProviderMediaJob::class));
     }
 
     public function test_the_row_carries_the_generalized_shape(): void
@@ -168,3 +200,6 @@ class ProviderMediaJobTest extends TestCase
         $migration->up();
     }
 }
+
+/** A host's typed-handle subclass — the `beam.media.job_model` seam, exercised. */
+class HostJobModel extends ProviderMediaJob {}

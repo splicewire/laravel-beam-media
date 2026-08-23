@@ -2,10 +2,12 @@
 
 namespace Splicewire\Beam\Media;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as SpatieBaseMedia;
 use Splicewire\Beam\Install\BeamInstallManifest;
+use Splicewire\Beam\Media\Models\ProviderMediaJob;
 
 /**
  * The media arm of the beam family (HTTP-03 / ADR-0178). Owns spatie/laravel-medialibrary,
@@ -48,6 +50,34 @@ class BeamMediaServiceProvider extends PackageServiceProvider
         // register phase completes before any provider's boot phase runs — reading the config
         // here (not at register-time) guarantees the host's override has already landed.
         $this->bootMediaModelBinding();
+
+        // The `provider_media_job` morph alias — the wire identifier this package's polymorphic rows
+        // store, and the ADR-0118 permission-token prefix. The package that OWNS the model owns its
+        // alias; a host should only have to declare aliases for its OWN models. Without it the model
+        // writes its FQCN into every `*_type` column that points at it and into its token prefix,
+        // which then cannot move without a data migration.
+        //
+        // Registered while the table is still EMPTY everywhere (surfaced by voice-profile 29's doctor
+        // run, the first host install of this package): an alias is free to choose exactly once, and
+        // 28 is about to write the first rows.
+        //
+        // ADDITIVE (`Relation::morphMap`), NEVER `enforceMorphMap`: a beam-composing host has many
+        // models on class-string morphs and global strict mode rejects every one of them. Mirrors
+        // {@see \Splicewire\Beam\BeamServiceProvider}.
+        //
+        // Keyed on the BASE class, deliberately, and NOT on `config('beam.media.job_model')`. A morph
+        // map is alias => class: one alias cannot cover two classes, so keying it on the configured
+        // subclass would leave the base unaliased and produce TWO tokens for one table — the very
+        // failure this line exists to prevent, reintroduced by the seam meant to be flexible.
+        //
+        // A host that subclasses names its OWN alias from its own provider. That is the estate's worked
+        // idiom, not an omission: tower's own service provider declares `'media' => Media::class` and
+        // `'video_job' => VideoJob::class` for its own subclasses, while this package aliases what this
+        // package owns. Named in prose deliberately — beam-media must not import a symbol from a
+        // package downstream of it.
+        Relation::morphMap([
+            'provider_media_job' => ProviderMediaJob::class,
+        ]);
 
         // Self-register into beam-core's install manifest so `splicewire:beam:install` publishes
         // this package's migration (shared/, one tag) with the rest of the stack.
