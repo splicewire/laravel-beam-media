@@ -32,6 +32,20 @@ use Splicewire\Beam\Particle\OperationKind;
     name: 'ingest',
     kind: OperationKind::Write,
     model: Media::class,
+    // `input:` is DELIBERATELY LEFT UNDECLARED — the one operation api-surface-coherence 68's sweep
+    // skipped on purpose, and the reason is structural rather than unfinished work.
+    //
+    // beam-media owns the OPERATION; the host owns what its request MEANS. `handle()` hands the whole
+    // `$request` to the bound `MediaIngestor` port, and in the flagship host that is Tower's
+    // `TowerMediaIngestor`, whose own docblock says it plainly: *"the ingest op's input is the upload
+    // InputData"*. Any class named here would be true in that host and a LIE in another — and a bare
+    // beam-media install binds no ingestor at all, so the honest declaration there is `false`, which is
+    // the opposite answer. `false` is therefore not the safe default it is on every other op in this
+    // package: it would reject the very payload the host's pipeline exists to read.
+    //
+    // What this wants is a HOST-CONTRIBUTED input declaration on a package-owned op — the same
+    // package-side refusal api-surface-coherence 17 hit — and that is a decision, not a line in a
+    // sweep. It is the one op still counted against the `null` ⇒ `false` flip gate.
 )]
 class IngestMedia
 {
