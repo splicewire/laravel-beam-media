@@ -36,9 +36,16 @@ use Splicewire\Beam\Particle\Attributes\ParticleResource;
 #[ParticleResource(
     key: 'media',
     backing: Media::class,
-    // `data:`/`input:` omitted — this class IS the read projection (single-class default); the
-    // convention `project()` below takes precedence. A standalone metadata-only create/update carries
-    // no JSON body schema yet (the upload file part is the ingest op's InputData, ticket 12).
+    // `data:` omitted — this class IS the read projection (single-class default); the convention
+    // `project()` below takes precedence.
+    //
+    // `input:` DECLARED (api-surface-coherence 65). It used to be omitted, on the reading that "a
+    // standalone metadata-only create/update carries no JSON body schema yet". `input: null` does not
+    // mean *no body* on the REST axis — `ParticleController::parseInput()` returns the raw Request and
+    // `toAttributes()` snake-maps every key onto a `$guarded = []` model, so it meant *any body*, and
+    // `model_type`/`model_id`/`disk` were all forgeable. {@see MediaWriteInputData} says what a media
+    // write accepts, and its OMISSIONS are the fix — see its docblock.
+    input: MediaWriteInputData::class,
     //
     // `filterable: false` (deviates from the 10-spec's `filterable: true` — a deliberate, flagged
     // engineering correction): beam-core's `ParticleController::index` branches on `filterable` — a
@@ -69,6 +76,32 @@ class MediaData extends Data
         public ?string $mimeType = null,
         public ?int $size = null,
     ) {}
+
+    /**
+     * The pre-write hook (the beam `prepare()` convention) — the server's half of the write, stamped on a
+     * FRESH record only (api-surface-coherence 65).
+     *
+     * These are the columns {@see MediaWriteInputData} deliberately does not accept. `disk` is storage
+     * PLACEMENT: the tenancy bootstrapper already switches `media-library.disk_name` to the tenant's own
+     * disk, so the configured value is the right answer and a caller-supplied one could only be wrong or
+     * hostile. The three conversion-bookkeeping columns are NOT NULL with no default and belong to the media
+     * library, not to an API caller.
+     *
+     * An existing record is left alone: an update never re-places a stored file.
+     */
+    public static function prepare(Media $media, mixed $input, mixed $actor): void
+    {
+        if ($media->exists) {
+            return;
+        }
+
+        $media->disk ??= config('media-library.disk_name');
+        $media->collection_name ??= 'default';
+        $media->manipulations ??= [];
+        $media->custom_properties ??= [];
+        $media->generated_conversions ??= [];
+        $media->responsive_images ??= [];
+    }
 
     /**
      * The row → Data projector (the beam `project()` convention). Reads Spatie's `original_url`

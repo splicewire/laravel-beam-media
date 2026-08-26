@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use ReflectionClass;
 use Splicewire\Beam\Media\Contracts\MediaIngestor;
 use Splicewire\Beam\Media\Data\MediaData;
+use Splicewire\Beam\Media\Data\MediaWriteInputData;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Media\Ops\DownloadMedia;
 use Splicewire\Beam\Media\Ops\IngestMedia;
@@ -28,7 +29,16 @@ class MediaParticleTest extends TestCase
 
         $resource = $attr[0]->newInstance();
         $this->assertSame('media', $resource->key);
-        $this->assertSame(Media::class, $resource->model);
+        // `model:` became `backing:` in the particle-contribution-seam ticket-13 rename (d7085af); this
+        // assertion was left naming the old slot and had been erroring ever since (the 43/48/53/55/59
+        // stale-assertion class, cause: api-surface-coherence 81 — no package suite runs unattended).
+        $this->assertSame(Media::class, $resource->backing);
+
+        // api-surface-coherence 65: the write body is DECLARED. `input: null` does not mean "no body" on
+        // the REST axis — `ParticleController::parseInput()` passes the raw Request through and every key
+        // snake-maps onto a `$guarded = []` model, so it meant "any body" and the polymorphic owner was
+        // forgeable. The declaration is the fix; see MediaWriteInputData for what it deliberately omits.
+        $this->assertSame(MediaWriteInputData::class, $resource->input);
         // filterable:false — the relative-mount index must scope THROUGH $fragment->media(); a
         // filterable index rides the data-filters builder and bypasses the bound relative. See MediaData.
         $this->assertFalse($resource->filterable);
