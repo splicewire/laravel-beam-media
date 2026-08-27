@@ -2,8 +2,8 @@
 
 namespace Splicewire\Beam\Media\Data;
 
-use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Optional;
+use Splicewire\Beam\Data\Data;
 use Splicewire\Beam\Http\Particle\ParticleController;
 use Splicewire\Beam\Media\Ops\DownloadMedia;
 use Splicewire\Beam\Write\Contracts\MapsToModelAttributes;

@@ -3,8 +3,8 @@
 namespace Splicewire\Beam\Media\Data;
 
 use Spatie\LaravelData\Attributes\MapOutputName;
-use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\SnakeCaseMapper;
+use Splicewire\Beam\Data\Data;
 use Splicewire\Beam\Http\Particle\ParticleController;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Particle\Attributes\ParticleResource;
