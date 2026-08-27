@@ -91,6 +91,41 @@ class MediaParticleTest extends TestCase
         $this->assertSame('https://tenant.app.splicewire.test/media/1/verse-guide.mid', $wire['original_url']);
     }
 
+    public function test_an_absent_order_column_is_untouched_and_an_explicit_null_clears_it(): void
+    {
+        // The three input states a PATCH has to keep apart. `order_column` is the one nullable column on
+        // this DTO whose null is a legitimate persisted state (spatie treats it as "unordered"), so
+        // "remove this record's explicit position" has to be expressible — and on the `!== null` gate it
+        // was not: an omitted field and an explicit null both arrived as null and both were skipped.
+        $absent = MediaWriteInputData::from(['name' => 'clip'])->toModelAttributes();
+        $this->assertArrayNotHasKey('order_column', $absent, 'An omitted field must not be written.');
+
+        $cleared = MediaWriteInputData::from(['name' => 'clip', 'orderColumn' => null])->toModelAttributes();
+        $this->assertArrayHasKey('order_column', $cleared, 'An explicit null must reach the column.');
+        $this->assertNull($cleared['order_column']);
+
+        $set = MediaWriteInputData::from(['orderColumn' => 3])->toModelAttributes();
+        $this->assertSame(3, $set['order_column']);
+    }
+
+    public function test_the_not_null_columns_stay_on_the_drop_nulls_gate(): void
+    {
+        // Deliberate non-conversion: `name`, `collection_name`, `file_name`, `size` and `custom_properties`
+        // are all NOT NULL in `create_media_table`, so a "clear" on any of them is a constraint violation
+        // dressed up as an API affordance. They keep the `!== null` gate, where an explicit null is a
+        // harmless no-op. `mime_type` IS nullable and is still held back — see the class docblock.
+        $attributes = MediaWriteInputData::from([
+            'name' => null,
+            'collectionName' => null,
+            'fileName' => null,
+            'size' => null,
+            'customProperties' => null,
+            'mimeType' => null,
+        ])->toModelAttributes();
+
+        $this->assertSame([], $attributes);
+    }
+
     public function test_download_is_a_read_particle_op(): void
     {
         $attr = (new ReflectionClass(DownloadMedia::class))->getAttributes(ParticleOp::class);
