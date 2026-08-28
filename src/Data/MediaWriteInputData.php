@@ -3,7 +3,7 @@
 namespace Splicewire\Beam\Media\Data;
 
 use Spatie\LaravelData\Optional;
-use Splicewire\Beam\Data\Data;
+use Splicewire\Beam\Data\BeamData;
 use Splicewire\Beam\Http\Particle\ParticleController;
 use Splicewire\Beam\Media\Ops\DownloadMedia;
 use Splicewire\Beam\Write\Contracts\MapsToModelAttributes;
@@ -61,7 +61,7 @@ use Splicewire\Beam\Write\Contracts\MapsToModelAttributes;
  * Nothing here widens what the DTO ACCEPTS — the property list is unchanged, so none of the omissions above
  * are reopened. `Optional` changes only how an already-accepted field's null is read.
  */
-class MediaWriteInputData extends Data implements MapsToModelAttributes
+class MediaWriteInputData extends BeamData implements MapsToModelAttributes
 {
     public function __construct(
         /** Display name for the media record (independent of the stored file name). */
