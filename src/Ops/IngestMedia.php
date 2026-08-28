@@ -45,7 +45,14 @@ use Splicewire\Beam\Particle\OperationKind;
     //
     // What this wants is a HOST-CONTRIBUTED input declaration on a package-owned op — the same
     // package-side refusal api-surface-coherence 17 hit — and that is a decision, not a line in a
-    // sweep. It is the one op still counted against the `null` ⇒ `false` flip gate.
+    // sweep.
+    //
+    // ⚠️ It is therefore NOT counted as outstanding. api-surface-coherence 117 gave the carve-out its
+    // spelling: `media.ingest` is named in `Splicewire\Beam\Doctor\UndeclaredInputAudit::ACKNOWLEDGED`
+    // with this reason, so `splicewire:beam:doctor` reports it as ACKNOWLEDGED rather than as unfinished
+    // work — and reports it as STALE the day this declaration gains an input, so the carve-out cannot
+    // outlive its reason. The acknowledgement lives in the audit deliberately: no fourth declaration
+    // state enters `#[ParticleOp]` for the sake of one operation.
 )]
 class IngestMedia
 {
