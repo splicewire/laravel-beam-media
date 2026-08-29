@@ -7,6 +7,8 @@ use Splicewire\Beam\Http\Particle\ParticleOperationController;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Particle\Attributes\ParticleOp;
 use Splicewire\Beam\Particle\OperationKind;
+use Splicewire\Beam\Routing\HttpMethod;
+use Splicewire\Beam\Routing\IdConstraint;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -32,6 +34,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
     // Enforced by `ParticleOperationController::rejectInput()`, so a request that carries one is
     // a 422 instead of a silent ignore.
     input: false,
+    // The verb and the `{id}` shape moved off the mount and onto the declaration
+    // (particle-operation-surface 14). Both were previously restated in
+    // `~/Herd/splicewire-app/routes/tenant.php` as `['method' => 'get', 'idConstraint' => 'uuid']`,
+    // where a host had to know that a media download is an idempotent read of a uuid-keyed row —
+    // two facts this package owns and that host does not.
+    method: HttpMethod::Get,
+    idConstraint: IdConstraint::Uuid,
 )]
 class DownloadMedia
 {

@@ -7,6 +7,7 @@ use Splicewire\Beam\Media\Contracts\MediaIngestor;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Particle\Attributes\ParticleOp;
 use Splicewire\Beam\Particle\OperationKind;
+use Splicewire\Beam\Routing\IdConstraint;
 
 /**
  * The ingest side-effect operation (HTTP-10 / asset 13 §4). A `kind: Write` `#[ParticleOp]` mounted at
@@ -53,6 +54,10 @@ use Splicewire\Beam\Particle\OperationKind;
     // work — and reports it as STALE the day this declaration gains an input, so the carve-out cannot
     // outlive its reason. The acknowledgement lives in the audit deliberately: no fourth declaration
     // state enters `#[ParticleOp]` for the sake of one operation.
+    // The `{id}` shape moved off the mount and onto the declaration
+    // (particle-operation-surface 14) — every host mounting this op restated `'idConstraint' => 'uuid'`
+    // for a key type the model already knows.
+    idConstraint: IdConstraint::Uuid,
 )]
 class IngestMedia
 {
