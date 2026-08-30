@@ -4,6 +4,7 @@ namespace Splicewire\Beam\Media\Ops;
 
 use Illuminate\Http\Request;
 use Splicewire\Beam\Http\Particle\ParticleOperationController;
+use Splicewire\Beam\Media\Delivery\MediaFileDelivery;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Particle\Attributes\ParticleOp;
 use Splicewire\Beam\Particle\OperationKind;
@@ -41,6 +42,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
     // two facts this package owns and that host does not.
     method: HttpMethod::Get,
     idConstraint: IdConstraint::Uuid,
+    // What this operation puts on the wire (particle-operation-surface 14). `output:` names a Data
+    // class and is structurally silent about an endpoint that returns BYTES, so this published an
+    // untyped 200 with no media type at all. {@see MediaFileDelivery} carries why the type is
+    // `application/octet-stream` rather than the record's real one, and why there is no format axis.
+    delivery: MediaFileDelivery::class,
 )]
 class DownloadMedia
 {

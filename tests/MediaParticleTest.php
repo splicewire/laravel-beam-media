@@ -10,9 +10,13 @@ use Splicewire\Beam\Media\Data\MediaWriteInputData;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Media\Ops\DownloadMedia;
 use Splicewire\Beam\Media\Ops\IngestMedia;
+use Splicewire\Beam\Particle\Attributes\AttributedParticleDiscovery;
 use Splicewire\Beam\Particle\Attributes\ParticleOp;
 use Splicewire\Beam\Particle\Attributes\ParticleResource;
+use Splicewire\Beam\Particle\Delivery\DeliveryResolvers;
 use Splicewire\Beam\Particle\OperationKind;
+use Splicewire\Beam\Particle\ParticleOperationRegistry;
+use Splicewire\Beam\Particle\ParticleResourceRegistry;
 
 /**
  * beam-media's own particle-declaration contract (HTTP-10). Unit-level: the attribute wiring + the
@@ -137,6 +141,32 @@ class MediaParticleTest extends TestCase
         $this->assertSame(OperationKind::Read, $op->kind);
         $this->assertSame(Media::class, $op->model);
         $this->assertTrue(method_exists(DownloadMedia::class, 'handle'));
+    }
+
+    public function test_download_declares_what_it_puts_on_the_wire(): void
+    {
+        // particle-operation-surface 14, acceptance #6. Asserted through the RUNTIME operation and not
+        // off the attribute alone: a slot that reaches the runtime object as its default is
+        // indistinguishable from one that was never declared, which is exactly how `signed:` stayed
+        // unforwarded for two days without a failing test.
+        (new AttributedParticleDiscovery(
+            $this->app->make(ParticleResourceRegistry::class),
+            $this->app->make(ParticleOperationRegistry::class),
+        ))->registerClass(DownloadMedia::class);
+
+        $operation = $this->app->make(ParticleOperationRegistry::class)->get('media', 'download');
+
+        $contract = DeliveryResolvers::contract($operation);
+
+        $this->assertSame(['application/octet-stream'], $contract['mediaTypes']);
+        $this->assertArrayHasKey('Content-Disposition', $contract['headers']);
+
+        // Empty is the STRONGER statement: one representation, no `?format` knob ever read. It also
+        // keeps `format` out of `frameworkParameters()`, which this op needs — it declares
+        // `input: false`, and a format axis would put the parameter on a collision course with
+        // `rejectInput()`.
+        $this->assertSame([], $contract['formats']);
+        $this->assertSame([], $operation->frameworkParameters());
     }
 
     public function test_ingest_is_a_write_particle_op(): void
