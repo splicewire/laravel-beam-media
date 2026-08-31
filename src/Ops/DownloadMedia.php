@@ -29,6 +29,27 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
     resource: 'media',
     name: 'download',
     kind: OperationKind::Read,
+    // ⚠️ `ability: false` — DELIBERATELY ungated, and the declaration now says so rather than leaving
+    // `null`'s residue (particle-write-surface ticket 02 tail, settled 2026-08-31). The reason, because
+    // "it is a Read" is NOT the reason:
+    //
+    //   - `OperationKind::Read` claims "the query scope is the gate". **Measured false at the flagship**:
+    //     the `media` resource declares `scope: null` (probed off the booted registry), and
+    //     `ResourceRecordLookup::within()` applies only `scope`. So the subject resolve is a bare
+    //     `findOrFail` and nothing row-gates this op. That much is a defect in the JUSTIFICATION, not in
+    //     this endpoint;
+    //   - what settles it is proportion. `handle` returns `$media->toResponse($request)` and nothing
+    //     else — no mutation, no dispatch, no external call, no spend. And on the same mount, under the
+    //     identical middleware stack (tenancy + `auth:sanctum` + `ResolveTenantUser`, no permission
+    //     middleware anywhere — route table, 2026-08-31), the same actor may already `media.show`,
+    //     `media.update` and `media.destroy` the very row whose bytes this streams. A gate on the
+    //     download that the DELETE does not carry is theatre; it would refuse the weakest verb on the
+    //     resource while the strongest stays open.
+    //
+    // ⚠️ So the real question this op raises is the resource's missing `scope:`, which is where a
+    // row-level gate for the whole of `media` belongs — recorded in particle-write-surface 02, and
+    // deliberately not answered by a per-op ability here.
+    ability: false,
     // `input: false` — this operation accepts NO caller payload, declared rather than implied
     // (api-surface-coherence 68). Measured, not assumed: `handle()` never touches `$request`.
     // Enforced by `ParticleOperationController::rejectInput()`, so a request that carries one is
