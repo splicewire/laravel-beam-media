@@ -47,19 +47,35 @@ use Splicewire\Beam\Routing\IdConstraint;
     // for the full argument for that token and that plane, and for why `abilityModel` stays `null`
     // rather than `false`).
     //
-    // The *fine-grained* answer is a `MediaPolicy::ingest()` delegating to `$media->model`, since
-    // `fragment.update` / `fragment.own.update` already exist with a live cascade policy — the exact
-    // shape `Splicewire\Tower\Policies\ModelStatusPolicy` uses for a sidecar annotation ON another
-    // model. `Media` carries no policy anywhere today. That is deliberately NOT built here: it
-    // *widens* the gate (to fragment owners) rather than creating it, and the two compose without
-    // conflict — spatie's `before` admits the permission-holder outright, and anyone else falls
-    // through to the policy. Sequencing it after is what lets this op stop being open today.
+    // The *fine-grained* answer LANDED (2026-08-31) and it is NOT on this line: `media.ingest` is also
+    // a named Gate ability defined by `BeamMediaServiceProvider::bootIngestGate()`, delegating to
+    // {@see \Splicewire\Beam\Media\Authorization\MediaIngestGate} — "can you update the model this
+    // media is attached to", which at the flagship reaches `fragment.update` / `fragment.own.update`
+    // through Fragment's live `#[UseCascadePolicy]`. The two compose in one string: spatie's `before`
+    // admits the permission-holder outright and never reaches the ability callback, so the widening
+    // can only ever admit someone this line refused.
+    //
+    // ⚠️ The shape this ticket originally proposed — `Gate::policy(Media::class, MediaPolicy::class)`
+    // with a `MediaPolicy::ingest()` — **could never have run.** Laravel's `formatAbilityToMethod()`
+    // camelizes on HYPHENS only, so the method it looks for is literally `media.ingest`, which is not
+    // a legal method name; the policy is skipped and the callback below it decides. Right rule, wrong
+    // registration seam. `MediaIngestGate` states both that and the blast-radius argument in full.
     //
     // **Cost — yes, and it does NOT belong here.** Ingest is unbounded and repeatable: the same media
     // can be ingested any number of times and each pass spends tokens. That is a quota, and a quota
-    // belongs on the mount as a `throttle:` or inside the ingestor. **An ability answers "may you",
-    // never "how often."** Do not let this gate be mistaken for a budget, and do not widen or narrow
-    // it to serve one.
+    // belongs on the mount as a `throttle:`. **An ability answers "may you", never "how often."** Do
+    // not let this gate be mistaken for a budget, and do not widen or narrow it to serve one.
+    //
+    // The quota landed alongside the widening, as the named limiter `beam-media.ingest` registered by
+    // `BeamMediaServiceProvider::bootIngestRateLimiter()` — two stacked axes (per-actor for fairness,
+    // per-tenant for budget), configured under `beam.media.ingest.throttle`. It is registered by this
+    // package and ATTACHED by the host, because there is no mount-time middleware seam:
+    // `ParticleMounter::op()` reads only `method`/`idConstraint`/`name`/`streams`/`alias` out of its
+    // `$options`. The mount is therefore a group:
+    //
+    //     Route::middleware('throttle:beam-media.ingest')->group(function (): void {
+    //         Particle::ops('media', 'media', [IngestMedia::class]);
+    //     });
     //
     // ⚠️ A HOST MUST DEFINE THIS NAME. An ability outside a host's declared universe is undefined, and
     // undefined is denied. The one host mounting this op (`~/Herd/splicewire-app`) seeds it to `Admin`
