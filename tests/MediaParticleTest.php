@@ -17,6 +17,7 @@ use Splicewire\Beam\Particle\Delivery\DeliveryResolvers;
 use Splicewire\Beam\Particle\OperationKind;
 use Splicewire\Beam\Particle\ParticleOperationRegistry;
 use Splicewire\Beam\Particle\ParticleResourceRegistry;
+use Splicewire\Beam\Particle\Subject\OperationSubjectModel;
 
 /**
  * beam-media's own particle-declaration contract (HTTP-10). Unit-level: the attribute wiring + the
@@ -139,7 +140,7 @@ class MediaParticleTest extends TestCase
         $this->assertSame('media', $op->resource);
         $this->assertSame('download', $op->name);
         $this->assertSame(OperationKind::Read, $op->kind);
-        $this->assertSame(Media::class, $op->model);
+        $this->assertSame(Media::class, $this->subjectModelFor(DownloadMedia::class, 'download'));
         $this->assertTrue(method_exists(DownloadMedia::class, 'handle'));
     }
 
@@ -178,8 +179,30 @@ class MediaParticleTest extends TestCase
         $this->assertSame('media', $op->resource);
         $this->assertSame('ingest', $op->name);
         $this->assertSame(OperationKind::Write, $op->kind);
-        $this->assertSame(Media::class, $op->model);
+        $this->assertSame(Media::class, $this->subjectModelFor(IngestMedia::class, 'ingest'));
         $this->assertTrue(method_exists(IngestMedia::class, 'handle'));
+    }
+
+    /**
+     * The model this operation's `{id}` resolves against, read the way the request path reads it.
+     *
+     * particle-operation-surface 18: `#[ParticleOp]`'s own `model:` is deprecated, and both ops here
+     * have dropped it, so asserting the attribute slot now asserts `null` and says nothing about
+     * behaviour. {@see OperationSubjectModel} is the single read — it answers from the `media`
+     * resource's own `backing:` ({@see MediaData}), which is why this registers the RESOURCE as well
+     * as the op. That coupling is the point of the ticket: the two ops named `Media` twice for a fact
+     * the resource already stated, with nothing checking the three agreed.
+     */
+    protected function subjectModelFor(string $opClass, string $name): ?string
+    {
+        $resources = $this->app->make(ParticleResourceRegistry::class);
+        $operations = $this->app->make(ParticleOperationRegistry::class);
+
+        $discovery = new AttributedParticleDiscovery($resources, $operations);
+        $discovery->registerClass(MediaData::class);
+        $discovery->registerClass($opClass);
+
+        return (new OperationSubjectModel($resources))->for($operations->get('media', $name));
     }
 
     public function test_ingest_op_is_a_noop_when_no_host_ingestor_is_bound(): void

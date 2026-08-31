@@ -32,7 +32,6 @@ use Splicewire\Beam\Routing\IdConstraint;
     resource: 'media',
     name: 'ingest',
     kind: OperationKind::Write,
-    model: Media::class,
     // `input:` is DELIBERATELY LEFT UNDECLARED — the one operation api-surface-coherence 68's sweep
     // skipped on purpose, and the reason is structural rather than unfinished work.
     //

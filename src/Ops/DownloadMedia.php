@@ -29,7 +29,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
     resource: 'media',
     name: 'download',
     kind: OperationKind::Read,
-    model: Media::class,
     // `input: false` — this operation accepts NO caller payload, declared rather than implied
     // (api-surface-coherence 68). Measured, not assumed: `handle()` never touches `$request`.
     // Enforced by `ParticleOperationController::rejectInput()`, so a request that carries one is
