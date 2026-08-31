@@ -32,6 +32,40 @@ use Splicewire\Beam\Routing\IdConstraint;
     resource: 'media',
     name: 'ingest',
     kind: OperationKind::Write,
+    // particle-write-surface ticket 02 — was `ability: null`. Measured gate-closed at the flagship on
+    // 2026-08-27: any authenticated tenant member, holding no role and no entitlement, could trigger
+    // the host-bound ingest pipeline on ANY media row on the tenant connection (`scope` is `null` on
+    // this resource). At the flagship that pipeline is Tower's `TowerMediaIngestor` — embeddings,
+    // graph triples, silo filing — so the reachable act both mutates silo membership and spends
+    // embedding tokens.
+    //
+    // ## This op raises TWO questions and only one of them belongs here
+    //
+    // **Authorization — yes, and it is this line.** The ingestor mutates, against the media's owning
+    // Fragment. The declared answer today is the derived permission name, at admin grain, on the
+    // spatie permission plane (see {@see \Splicewire\Beam\Market\Extensions\Ops\RemoveInstalledExtension}
+    // for the full argument for that token and that plane, and for why `abilityModel` stays `null`
+    // rather than `false`).
+    //
+    // The *fine-grained* answer is a `MediaPolicy::ingest()` delegating to `$media->model`, since
+    // `fragment.update` / `fragment.own.update` already exist with a live cascade policy — the exact
+    // shape `Splicewire\Tower\Policies\ModelStatusPolicy` uses for a sidecar annotation ON another
+    // model. `Media` carries no policy anywhere today. That is deliberately NOT built here: it
+    // *widens* the gate (to fragment owners) rather than creating it, and the two compose without
+    // conflict — spatie's `before` admits the permission-holder outright, and anyone else falls
+    // through to the policy. Sequencing it after is what lets this op stop being open today.
+    //
+    // **Cost — yes, and it does NOT belong here.** Ingest is unbounded and repeatable: the same media
+    // can be ingested any number of times and each pass spends tokens. That is a quota, and a quota
+    // belongs on the mount as a `throttle:` or inside the ingestor. **An ability answers "may you",
+    // never "how often."** Do not let this gate be mistaken for a budget, and do not widen or narrow
+    // it to serve one.
+    //
+    // ⚠️ A HOST MUST DEFINE THIS NAME. An ability outside a host's declared universe is undefined, and
+    // undefined is denied. The one host mounting this op (`~/Herd/splicewire-app`) seeds it to `Admin`
+    // in `database/seeders/PermissionsSeeder.php`; a bare beam-media install binds no ingestor at all,
+    // so there `handle()` was already a no-op and the gate costs nothing.
+    ability: 'media.ingest',
     // `input:` is DELIBERATELY LEFT UNDECLARED — the one operation api-surface-coherence 68's sweep
     // skipped on purpose, and the reason is structural rather than unfinished work.
     //
