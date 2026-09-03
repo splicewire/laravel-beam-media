@@ -7,11 +7,13 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Rushing\PermissionCascade\Support\CascadePolicyRegistrar;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as SpatieBaseMedia;
 use Splicewire\Beam\Install\BeamInstallManifest;
 use Splicewire\Beam\Media\Authorization\MediaIngestGate;
+use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Media\Models\ProviderMediaJob;
 use Splicewire\Beam\Media\Ops\IngestMedia;
 
@@ -61,6 +63,16 @@ class BeamMediaServiceProvider extends PackageServiceProvider
         // OFTEN. They are separate calls because they are separate questions; see each method.
         $this->bootIngestGate();
         $this->bootIngestRateLimiter();
+
+        // `Media` binds its authorization HERE, in the package that owns the model (api-surface-coherence
+        // 147; the shape 135 landed for beam's `Hook`). Until this line existed the model carried NO
+        // policy, and the estate read that absence four ways at once: `ResourceFiltersController` fell
+        // through, `ParticleController::show()`/`destroy()` (`authorize('view'|'delete')`) denied everyone
+        // but a host's Root bypass, `GateWriteGate` denied every write, and the Frame nav hid the seat.
+        // One declaration, consumed by all four. The `media.*` family is seeded to a host's admin role
+        // by the host — a member holding no token is denied, which is the cascade's own default.
+        // Laravel resolves policies through `class_parents`, so a host's subclass is covered.
+        CascadePolicyRegistrar::register(Media::class);
 
         // The `provider_media_job` morph alias — the wire identifier this package's polymorphic rows
         // store, and the ADR-0118 permission-token prefix. The package that OWNS the model owns its

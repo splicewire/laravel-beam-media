@@ -3,6 +3,7 @@
 namespace Splicewire\Beam\Media\Models;
 
 use Spatie\MediaLibrary\MediaCollections\Models\Concerns\HasUuid;
+use Rushing\PermissionCascade\Attributes\UseCascadePolicy;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
 use Splicewire\Beam\Facades\Beam;
 
@@ -17,7 +18,14 @@ use Splicewire\Beam\Facades\Beam;
  * `config('beam.media.model')`. The base is deliberately thin — host-specific concerns
  * (source-meta scopes, flags/tags, a content-url accessor) live on the host subclass, not
  * here. beam-media names no host; the dependency runs one way (host → beam-media).
+ *
+ * Authorization is declared HERE, on the model, and bound by this package's provider
+ * (api-surface-coherence 147, the shape 135 landed for `Hook`): `#[UseCascadePolicy]` gives
+ * `Gate::getPolicyFor(Media::class)` a real answer, so the four consumers of a policy stop reading its
+ * absence four different ways. Laravel resolves a policy through `class_parents`, so a host's subclass
+ * (tower's Media) is covered by this one binding without re-declaring it.
  */
+#[UseCascadePolicy]
 class Media extends BaseMedia
 {
     use HasUuid;
@@ -40,5 +48,21 @@ class Media extends BaseMedia
     public function getTable(): string
     {
         return Beam::table('media');
+    }
+
+    /**
+     * Write-side pin of the durable morph token (ADR-0118: the alias IS the permission-token prefix).
+     *
+     * This class and a host's subclass ride the SAME `beam_media` row, so they are tier variants of one
+     * particle. The host owns the read-side `Relation::morphMap` entry for `media` and points it at ITS
+     * subclass (tower does), so this base class is absent from the map at such a host and
+     * `Model::getMorphClass()` — an exact class-string match — would fall back to the FQCN: every
+     * `*_type` column pointing at a base-instantiated row, and every permission token the cascade mints
+     * for `Media::class`, would read `splicewirebeammediamodelsmedia`. Pinning the literal keeps the
+     * token `media` whichever tier instantiated the row. Same shape as satellite-knowledge's `Rule`.
+     */
+    public function getMorphClass(): string
+    {
+        return 'media';
     }
 }

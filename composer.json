@@ -23,6 +23,7 @@
         "spatie/laravel-data": "^4.0|^5.0",
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-package-tools": "^1.16",
+        "rushing/laravel-permission-cascade": "*",
         "splicewire/laravel-beam": "*",
         "rushing/laravel-schema-convergence": "*"
     },
@@ -78,6 +79,10 @@
         }
     },
     "repositories": [
+        {
+            "type": "git",
+            "url": "https://github.com/stephenr85/laravel-permission-cascade.git"
+        },
         {
             "type": "git",
             "url": "https://github.com/stephenr85/laravel-schema-convergence.git"
