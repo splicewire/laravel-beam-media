@@ -1,6 +1,6 @@
 {
     "name": "splicewire/laravel-beam-media",
-    "description": "The media arm of the beam family: the generic UUID-native Media model (extends spatie/laravel-medialibrary's base Media with a uuid primary key), the declarative primary-image traits (HasPrimaryImages / HasFeaturedImage), and the ubiquitous, publish-only shared/ media table migration. Extracted from beam-core (HTTP-03 / ADR-0178): beam-media owns spatie/laravel-medialibrary and requires it DOWN. beam-media also requires base beam DOWN (HTTP-10, as a particle consumer) — a one-way edge; base beam does NOT require beam-media back, so there is no cycle. A host (Tower) subclasses Models\\Media and binds it via config('beam-media.model').",
+    "description": "The media arm of the beam family: the generic UUID-native Media model (extends spatie/laravel-medialibrary's base Media with a uuid primary key), the declarative primary-image traits (HasPrimaryImages / HasFeaturedImage), and the ubiquitous, publish-only shared/ media table migration. Extracted from beam-core (HTTP-03 / ADR-0178): beam-media owns spatie/laravel-medialibrary and requires it DOWN. beam-media also requires base beam DOWN (HTTP-10, as a particle consumer) \u2014 a one-way edge; base beam does NOT require beam-media back, so there is no cycle. A host (Tower) subclasses Models\\Media and binds it via config('beam-media.model').",
     "keywords": [
         "laravel",
         "schemastud",
@@ -53,7 +53,7 @@
             ]
         },
         "package-topology": {
-            "because": "beam-media is the media arm of the beam family — it OWNS the media public surface (Models\\Media, Data\\MediaData #[ParticleResource], the download/ingest #[ParticleOp]s, the 2 traits HasPrimaryImages/HasFeaturedImage, the central+tenant media migrations) extracted DOWN out of beam-core (HTTP-03 / ADR-0178). As a particle CONSUMER (HTTP-10) it depends DOWN on base beam for the particle machinery, exactly as the sibling arms (accounts/bookmarks/taxonomy) do — a plain in-estate require modelled here as mustRequire, NOT a downOnly from-target: per the evaluator, downOnly lists the HIGHER tiers a package must never reach UP into (a downOnly entry flags when subject REACHES it), so listing beam there wrongly forbade the legal beam-media → beam consume-down edge. spatie/laravel-medialibrary is likewise a down-require (owned DOWN, see the require block) but lives OUTSIDE the topology include-globs (rushing/*, splicewire/*, schemastud/*), so it is asserted only in composer require — not as a topology rule (mustRequire/downOnly both key off the in-scope graph). The ADR-0178 invariant is one-directional: base beam does NOT require beam-media (no reverse edge → no cycle); the media-arm direction beam-media → beam is the natural, legal consume-down edge. beam-media must NEVER reach UP into the tower / satellite tiers it is consumed by (the policy.noRequire guards below), mirroring accounts/taxonomy.",
+            "because": "beam-media is the media arm of the beam family \u2014 it OWNS the media public surface (Models\\Media, Data\\MediaData #[ParticleResource], the download/ingest #[ParticleOp]s, the 2 traits HasPrimaryImages/HasFeaturedImage, the central+tenant media migrations) extracted DOWN out of beam-core (HTTP-03 / ADR-0178). As a particle CONSUMER (HTTP-10) it depends DOWN on base beam for the particle machinery, exactly as the sibling arms (accounts/bookmarks/taxonomy) do \u2014 a plain in-estate require modelled here as mustRequire, NOT a downOnly from-target: per the evaluator, downOnly lists the HIGHER tiers a package must never reach UP into (a downOnly entry flags when subject REACHES it), so listing beam there wrongly forbade the legal beam-media \u2192 beam consume-down edge. spatie/laravel-medialibrary is likewise a down-require (owned DOWN, see the require block) but lives OUTSIDE the topology include-globs (rushing/*, splicewire/*, schemastud/*), so it is asserted only in composer require \u2014 not as a topology rule (mustRequire/downOnly both key off the in-scope graph). The ADR-0178 invariant is one-directional: base beam does NOT require beam-media (no reverse edge \u2192 no cycle); the media-arm direction beam-media \u2192 beam is the natural, legal consume-down edge. beam-media must NEVER reach UP into the tower / satellite tiers it is consumed by (the policy.noRequire guards below), mirroring accounts/taxonomy.",
             "mustRequire": [
                 "splicewire/laravel-beam"
             ],
@@ -62,7 +62,7 @@
                     {
                         "fromPrefix": "splicewire/laravel-beam-media",
                         "toPrefix": "splicewire/laravel-tower",
-                        "because": "the media arm is reusable by any beam site; it is consumed DOWN by the tower host (which subclasses Models\\Media + binds config('beam-media.model')) — beam-media never requires tower (no reverse/upward edge)"
+                        "because": "the media arm is reusable by any beam site; it is consumed DOWN by the tower host (which subclasses Models\\Media + binds config('beam-media.model')) \u2014 beam-media never requires tower (no reverse/upward edge)"
                     },
                     {
                         "fromPrefix": "splicewire/laravel-beam-media",
@@ -79,6 +79,111 @@
         }
     },
     "repositories": [
+        {
+            "type": "path",
+            "url": "../../rushing/codegen",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-data-filters",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-data-schemas-scribe",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-doctor",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-permission-cascade",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-pipeline-registry",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-popcorn",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-schema-convergence",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/laravel-versioning",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../rushing/php-popcorn",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../schemastud/laravel-data-schemas",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../schemastud/laravel-frame",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../schemastud/laravel-json-ns",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../../schemastud/php-json-ns",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "../laravel-beam",
+            "options": {
+                "symlink": true
+            }
+        },
         {
             "type": "git",
             "url": "https://github.com/stephenr85/laravel-permission-cascade.git"
