@@ -2,6 +2,7 @@
 
 namespace Splicewire\Beam\Media\Data;
 
+use Schemastud\DataSchemas\Attributes\Description;
 use Spatie\LaravelData\Optional;
 use Splicewire\Beam\Data\BeamData;
 use Splicewire\Beam\Http\Particle\ParticleController;
@@ -65,22 +66,29 @@ class MediaWriteInputData extends BeamData implements MapsToModelAttributes
 {
     public function __construct(
         /** Display name for the media record (independent of the stored file name). */
+        #[Description('Display name of the media record, independent of its stored filename.')]
         public ?string $name = null,
         /** The spatie media collection this record is filed under. */
+        #[Description('Media collection under which the record is filed.')]
         public ?string $collectionName = null,
         /** The stored file name. */
+        #[Description('Stored filename associated with the media record.')]
         public ?string $fileName = null,
         /** The media's MIME type. */
+        #[Description('MIME type recorded for the media.')]
         public ?string $mimeType = null,
         /** File size in bytes. */
+        #[Description('Recorded file size in bytes.')]
         public ?int $size = null,
         /** The caller-authored metadata bag spatie exposes on every media record. */
+        #[Description('Caller-authored metadata stored with the media record.')]
         public ?array $customProperties = null,
         /**
          * Ordering within the collection — nullable in the column, and CLEARABLE. `int|Optional|null` with
          * no `= null` default, so an absent field is the `Optional` sentinel and an explicit null is a real
          * null that reaches the column. See the class docblock; do not restore the default.
          */
+        #[Description('Position within the collection; send null to mark the media as unordered.')]
         public int|Optional|null $orderColumn = new Optional,
     ) {}
 
