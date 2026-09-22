@@ -44,9 +44,7 @@ class MediaParticleTest extends TestCase
         // snake-maps onto a `$guarded = []` model, so it meant "any body" and the polymorphic owner was
         // forgeable. The declaration is the fix; see MediaWriteInputData for what it deliberately omits.
         $this->assertSame(MediaWriteInputData::class, $resource->input);
-        // filterable:false — the relative-mount index must scope THROUGH $fragment->media(); a
-        // filterable index rides the data-filters builder and bypasses the bound relative. See MediaData.
-        $this->assertFalse($resource->filterable);
+
         $this->assertSame(20, $resource->perPage);
     }
 

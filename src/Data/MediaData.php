@@ -46,18 +46,6 @@ use Splicewire\Beam\Particle\Attributes\ParticleResource;
     // `model_type`/`model_id`/`disk` were all forgeable. {@see MediaWriteInputData} says what a media
     // write accepts, and its OMISSIONS are the fix — see its docblock.
     input: MediaWriteInputData::class,
-    //
-    // `filterable: false` (deviates from the 10-spec's `filterable: true` — a deliberate, flagged
-    // engineering correction): beam-core's `ParticleController::index` branches on `filterable` — a
-    // `filterable: true` index rides the data-filters BUILDER (`hydrator->query($key)`) and, by
-    // construction, IGNORES the bound-relative query, so the fragment-relative mount
-    // (`/fragments/{fragment}/media`) would list EVERY media row instead of the fragment's. The
-    // relative-scoping contract (HTTP-10 acceptance #4 — the FK is structural, the index scoped
-    // THROUGH `$fragment->media()`) is load-bearing; `filterable: false` is the only setting under which
-    // the relative index scopes correctly (it takes the `relativeBaseQuery` path). It also avoids
-    // standing up a `media` data-filters resource that isn't in this ticket's scope. Media has no facet
-    // filters today, so no capability is lost. `defaultSort` (null ⇒ `created_at`) orders the flat list.
-    filterable: false,
     perPage: 20,
     // Display singular for docs/titles: the inflector singularizes `media` to "Medium", so the download
     // op titled "Medium Download" in the generated API docs. `media` is a mass noun here — one record is
