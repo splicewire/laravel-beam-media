@@ -140,7 +140,7 @@ class IngestMediaAuthorizationTest extends TestCase
         $media = $this->media();
 
         $this->actingAs($this->member())
-            ->postJson("/media/{$media->uuid}/op/ingest")
+            ->postJson("/media/{$media->uuid}/ingest")
             ->assertForbidden();
 
         $this->assertSame(0, $spy->calls, 'refused ⇒ no tokens spent, no silo membership mutated');
@@ -152,7 +152,7 @@ class IngestMediaAuthorizationTest extends TestCase
         $media = $this->media();
 
         $this->actingAs($this->memberHolding('media.ingest'))
-            ->postJson("/media/{$media->uuid}/op/ingest")
+            ->postJson("/media/{$media->uuid}/ingest")
             ->assertOk();
 
         $this->assertSame(1, $spy->calls, 'admitted ⇒ the effect happened');
@@ -190,7 +190,7 @@ class IngestMediaAuthorizationTest extends TestCase
         $this->assertCount(0, $actor->getAllPermissions());
 
         $this->actingAs($actor)
-            ->postJson("/media/{$media->uuid}/op/ingest")
+            ->postJson("/media/{$media->uuid}/ingest")
             ->assertOk();
 
         $this->assertSame(1, $spy->calls, 'the owner of the attached model may ingest its media');
@@ -203,7 +203,7 @@ class IngestMediaAuthorizationTest extends TestCase
         $media = $this->media(IngestOpOwner::class, $owner->id);
 
         $this->actingAs($this->member())
-            ->postJson("/media/{$media->uuid}/op/ingest")
+            ->postJson("/media/{$media->uuid}/ingest")
             ->assertForbidden();
 
         $this->assertSame(0, $spy->calls, 'delegating to an owner must not admit a non-owner');
@@ -221,7 +221,7 @@ class IngestMediaAuthorizationTest extends TestCase
         $media = $this->media($type, $id);
 
         $this->actingAs($this->member())
-            ->postJson("/media/{$media->uuid}/op/ingest")
+            ->postJson("/media/{$media->uuid}/ingest")
             ->assertForbidden();
 
         $this->assertSame(0, $spy->calls);
@@ -272,7 +272,7 @@ class IngestMediaAuthorizationTest extends TestCase
         $media = $this->media(IngestOpOwner::class, $theirs->id);
 
         $this->actingAs($actor)
-            ->postJson("/media/{$media->uuid}/op/ingest", [
+            ->postJson("/media/{$media->uuid}/ingest", [
                 'model_type' => IngestOpOwner::class,
                 'model_id' => $mine->id,
             ])

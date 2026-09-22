@@ -210,7 +210,7 @@ class MediaParticleTest extends TestCase
         $this->assertFalse($this->app->bound(MediaIngestor::class));
 
         $media = new Media;
-        $result = IngestMedia::handle($media, Request::create('/media/x/op/ingest', 'POST'), null);
+        $result = IngestMedia::handle($media, Request::create('/media/x/ingest', 'POST'), null);
 
         $this->assertSame($media, $result);
     }
@@ -234,7 +234,7 @@ class MediaParticleTest extends TestCase
         };
         $this->app->instance(MediaIngestor::class, $ingestor);
 
-        $request = Request::create('/media/x/op/ingest', 'POST', ['also_ingest' => true]);
+        $request = Request::create('/media/x/ingest', 'POST', ['also_ingest' => true]);
         $result = IngestMedia::handle($media, $request, null);
 
         $this->assertTrue($ingestor->called, 'IngestMedia must delegate to the bound MediaIngestor.');

@@ -96,7 +96,7 @@ class IngestMediaThrottleTest extends TestCase
         $spy = $this->spyIngestor();
 
         foreach (range(1, 5) as $ignored) {
-            $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
+            $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertOk();
         }
 
         $this->assertSame(5, $spy->calls, 'limits configured but not attached ⇒ nothing is bounded');
@@ -112,9 +112,9 @@ class IngestMediaThrottleTest extends TestCase
         [$actor, $media] = $this->ownedMedia();
         $spy = $this->spyIngestor();
 
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertStatus(429);
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertOk();
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertOk();
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertStatus(429);
 
         // Observed as "the pipeline did not run", not read off the status — a 429 that still spent
         // tokens would be a cost control that costs.
@@ -130,12 +130,12 @@ class IngestMediaThrottleTest extends TestCase
         $colleague = $this->colleagueOn($media);
         $spy = $this->spyIngestor();
 
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertStatus(429);
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertOk();
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertStatus(429);
 
         // The finding: the actor axis is genuinely per-actor. If it were keyed on the media row or the
         // route, this would be a 429 and the fairness bound would be a denial-of-service on colleagues.
-        $this->actingAs($colleague)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
+        $this->actingAs($colleague)->postJson("/media/{$media->uuid}/ingest")->assertOk();
 
         $this->assertSame(2, $spy->calls);
     }
@@ -151,13 +151,13 @@ class IngestMediaThrottleTest extends TestCase
         [$first, $media] = $this->ownedMedia();
         $spy = $this->spyIngestor();
 
-        $this->actingAs($first)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
-        $this->actingAs($this->colleagueOn($media))->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
+        $this->actingAs($first)->postJson("/media/{$media->uuid}/ingest")->assertOk();
+        $this->actingAs($this->colleagueOn($media))->postJson("/media/{$media->uuid}/ingest")->assertOk();
 
         // A THIRD, entirely fresh actor — with the per-actor axis disabled, the only thing that can
         // refuse them is the tenant's shared budget. This is the assertion a per-actor-only throttle
         // fails, and it is the one the money depends on.
-        $this->actingAs($this->colleagueOn($media))->postJson("/media/{$media->uuid}/op/ingest")->assertStatus(429);
+        $this->actingAs($this->colleagueOn($media))->postJson("/media/{$media->uuid}/ingest")->assertStatus(429);
 
         $this->assertSame(2, $spy->calls);
     }
@@ -171,12 +171,12 @@ class IngestMediaThrottleTest extends TestCase
         [$actor, $media] = $this->ownedMedia();
         $spy = $this->spyIngestor();
 
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertStatus(429);
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertOk();
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertStatus(429);
 
         $this->app->instance(self::TENANT_CONTRACT, new FakeTenant('globex'));
 
-        $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
+        $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertOk();
 
         $this->assertSame(2, $spy->calls);
     }
@@ -192,7 +192,7 @@ class IngestMediaThrottleTest extends TestCase
         $spy = $this->spyIngestor();
 
         foreach (range(1, 10) as $ignored) {
-            $this->actingAs($actor)->postJson("/media/{$media->uuid}/op/ingest")->assertOk();
+            $this->actingAs($actor)->postJson("/media/{$media->uuid}/ingest")->assertOk();
         }
 
         $this->assertSame(10, $spy->calls, 'both axes null ⇒ Limit::none(), so a test env cannot be throttled');
