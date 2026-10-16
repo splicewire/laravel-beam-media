@@ -1,4 +1,4 @@
-> You are in **rushing/laravel-beam-media** — the media arm of the beam family.
+> You are in **splicewire/laravel-beam-media** — the media arm of the beam family.
 
 The generic UUID-native `Media` model (extends spatie/laravel-medialibrary's base Media with a
 uuid primary key), the declarative primary-image traits (`HasPrimaryImages` / `HasFeaturedImage`),
