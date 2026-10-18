@@ -111,6 +111,15 @@ class BeamMediaServiceProvider extends PackageServiceProvider
                 migrates: true,
             );
         }
+
+        // ...and the migrations audit into the doctor manifest (B2-2): package present but
+        // migration never run is exactly the half-installed state the fleet doctor exists to catch.
+        if ($this->app->bound(\Splicewire\Beam\Doctor\BeamDoctorManifest::class)) {
+            $this->app->make(\Splicewire\Beam\Doctor\BeamDoctorManifest::class)->register(
+                'splicewire/laravel-beam-media',
+                \Splicewire\Beam\Media\Doctor\BeamMediaMigrationsAudit::class,
+            );
+        }
     }
 
     /**
