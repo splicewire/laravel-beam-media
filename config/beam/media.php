@@ -4,6 +4,7 @@ use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Media\Models\ProviderMediaJob;
 
 return [
+    'api_root' => env('BEAM_MEDIA_API_ROOT', 'beam/media'),
     /*
      * The Media model. beam-media ships its own UUID-native base Media (extends spatie's
      * base Media, `uuid` primary key). A host (Tower) subclasses it and points this key at
