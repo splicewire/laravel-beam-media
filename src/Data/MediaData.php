@@ -4,6 +4,7 @@ namespace Splicewire\Beam\Media\Data;
 
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Mappers\SnakeCaseMapper;
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 use Splicewire\Beam\Data\BeamData;
 use Splicewire\Beam\Http\Particle\ParticleController;
 use Splicewire\Beam\Media\Models\Media;
@@ -54,6 +55,7 @@ use Splicewire\Beam\Particle\Attributes\ParticleResource;
     singularLabel: 'Media',
 )]
 #[MapOutputName(SnakeCaseMapper::class)]
+#[TypeScript]
 class MediaData extends BeamData
 {
     public function __construct(

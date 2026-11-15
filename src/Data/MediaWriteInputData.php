@@ -4,6 +4,7 @@ namespace Splicewire\Beam\Media\Data;
 
 use Schemastud\DataSchemas\Attributes\Description;
 use Spatie\LaravelData\Optional;
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 use Splicewire\Beam\Data\BeamData;
 use Splicewire\Beam\Http\Particle\ParticleController;
 use Splicewire\Beam\Media\Ops\DownloadMedia;
@@ -62,6 +63,7 @@ use Splicewire\Beam\Write\Contracts\MapsToModelAttributes;
  * Nothing here widens what the DTO ACCEPTS — the property list is unchanged, so none of the omissions above
  * are reopened. `Optional` changes only how an already-accepted field's null is read.
  */
+#[TypeScript]
 class MediaWriteInputData extends BeamData implements MapsToModelAttributes
 {
     public function __construct(
