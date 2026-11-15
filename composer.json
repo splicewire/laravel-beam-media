@@ -25,7 +25,8 @@
         "spatie/laravel-package-tools": "^1.16",
         "rushing/laravel-permission-cascade": "*",
         "splicewire/laravel-beam": "*",
-        "rushing/laravel-schema-convergence": "*"
+        "rushing/laravel-schema-convergence": "*",
+        "splicewire/laravel-composition-spine": "dev-main"
     },
     "require-dev": {
         "laravel/pint": "^1.0",
@@ -195,6 +196,10 @@
         {
             "type": "git",
             "url": "https://github.com/splicewire/laravel-beam.git"
+        },
+        {
+            "type": "git",
+            "url": "https://github.com/splicewire/laravel-composition-spine.git"
         }
     ],
     "minimum-stability": "dev",
