@@ -14,17 +14,17 @@ use Splicewire\Beam\Config\ConfigSection;
  *
  * Every key is deploy-only and not overridable until it is opted in.
  */
-#[ConfigRoot(root: 'beam.media', title: 'Media', description: 'How this install stores media files and how often media may be ingested.')]
+#[ConfigRoot(root: 'beam.media', title: 'Media', description: 'How this install stores media files and how often new media may be added.')]
 class BeamMediaSection extends ConfigSection
 {
     public function __construct(
-        #[Title('Media API path'), Description('The URL path prefix the media API is served under.'), ConfigKey(env: 'BEAM_MEDIA_API_ROOT')]
+        #[Title('Media endpoint address'), Description('The web address where applications send media requests.'), ConfigKey(env: 'BEAM_MEDIA_API_ROOT')]
         public string $api_root,
-        #[Title('Media model class'), Description('The class used to represent a stored media file. A host may point this at its own subclass of the built-in media model.'), ConfigKey]
+        #[Title('Stored media records'), Description('How this installation tracks each saved media file.'), ConfigKey]
         public string $model,
-        #[Title('Media job model class'), Description('The class that records a unit of media work handed to an outside service for processing.'), ConfigKey]
+        #[Title('Media processing records'), Description('How this installation tracks media work sent to an outside service for processing.'), ConfigKey]
         public string $job_model,
-        #[Title('Ingest'), Description('Limits applied when media is ingested.'), ConfigKey]
+        #[Title('Adding media'), Description('Limits on how often new media may be added.'), ConfigKey]
         public BeamMediaIngestConfig $ingest,
     ) {
     }

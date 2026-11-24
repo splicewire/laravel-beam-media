@@ -13,9 +13,9 @@ use Splicewire\Beam\Config\Attributes\ConfigKey;
 class BeamMediaIngestThrottleConfig extends Data
 {
     public function __construct(
-        #[Title('Per-user limit'), Description('The most media-ingest requests one signed-in user may make per minute.'), ConfigKey]
+        #[Title('Per-user limit'), Description('The most requests to add media one signed-in user may make per minute.'), ConfigKey]
         public int $per_actor,
-        #[Title('Per-tenant limit'), Description('The most media-ingest requests one tenant may make per minute, counted across all of its users.'), ConfigKey]
+        #[Title('Per-tenant limit'), Description('The most requests to add media one tenant may make per minute, counted across all of its users.'), ConfigKey]
         public int $per_tenant,
     ) {
     }

@@ -13,7 +13,7 @@ use Splicewire\Beam\Config\Attributes\ConfigKey;
 class BeamMediaIngestConfig extends Data
 {
     public function __construct(
-        #[Title('Ingest rate limits'), Description('How often media may be ingested, so processing cost stays bounded.'), ConfigKey]
+        #[Title('Rate limits for adding media'), Description('How often new media may be added.'), ConfigKey]
         public BeamMediaIngestThrottleConfig $throttle,
     ) {
     }
