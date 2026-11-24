@@ -11,8 +11,10 @@ use Rushing\PermissionCascade\Support\CascadePolicyRegistrar;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as SpatieBaseMedia;
+use Splicewire\Beam\Config\ConfigSectionRegistry;
 use Splicewire\Beam\Install\BeamInstallManifest;
 use Splicewire\Beam\Media\Authorization\MediaIngestGate;
+use Splicewire\Beam\Media\Config\BeamMediaSection;
 use Splicewire\Beam\Media\Models\Media;
 use Splicewire\Beam\Media\Models\ProviderMediaJob;
 use Splicewire\Beam\Media\Ops\IngestMedia;
@@ -49,6 +51,19 @@ class BeamMediaServiceProvider extends PackageServiceProvider
                 'shared/create_media_table',
                 'shared/create_provider_media_jobs_table',
             ]);
+    }
+
+    public function packageRegistered(): void
+    {
+        // Declare the beam.media Config Section (ADR-0245). Register phase so the section is always
+        // present, independent of the media-model binding (which is deliberately deferred to boot).
+        $this->callAfterResolving(ConfigSectionRegistry::class, static function (ConfigSectionRegistry $sections): void {
+            $sections->section(
+                BeamMediaSection::class,
+                owner: 'splicewire/laravel-beam-media',
+                packageFile: __DIR__.'/../config/beam/media.php',
+            );
+        });
     }
 
     public function packageBooted(): void
