@@ -28,6 +28,37 @@ final class MediaRoutes
         self::atRoot(fn () => app(Router::class)->middleware('throttle:beam-media.ingest')->group(fn () => Particle::ops('', 'media', [IngestMedia::class])));
     }
 
+    /**
+     * Operations a host contributes onto `media`, mounted at the package root by name (owner-review-20261112 58,
+     * the Q61-1 shape). Media cannot name their classes, so the host registers them and names them here.
+     * `$middleware` is the host's own gate for them (the flagship's music-medium entitlement); state `[]` for none.
+     *
+     * @param  list<string>  $ops
+     * @param  list<string>  $middleware
+     */
+    public static function ops(array $ops, array $middleware): void
+    {
+        if ($ops === []) {
+            return;
+        }
+        self::atRoot(fn () => app(Router::class)->middleware($middleware)->group(fn () => Particle::ops('', 'media', $ops)));
+    }
+
+    /**
+     * Relative edges a host declares from a parent media cannot name onto `media` (the flagship's fragments),
+     * mounted at the package root (owner-review-20261112 58, Q58-1 (a)): the host keeps the declaration and its
+     * coupling; media supplies the address.
+     *
+     * @param  list<string>  $relatives  `#[ParticleRelative]` class-strings
+     */
+    public static function relatives(string $parent, array $relatives): void
+    {
+        if ($relatives === []) {
+            return;
+        }
+        self::atRoot(fn () => Particle::relatives($parent, $relatives));
+    }
+
     private static function atRoot(Closure $routes): void
     {
         if (! app(ParticleResourceRegistry::class)->has('media')) {

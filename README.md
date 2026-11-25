@@ -46,6 +46,19 @@ Route::particleRelative('fragments', Fragment::class, via: 'media', routes: func
 
 Register the attribute resource at boot: `app(AttributedParticleDiscovery::class)->discover([MediaData::class])`.
 
+### The package root
+
+`MediaRoutes` mounts at `beam.media.api_root` (default `beam/media`), names `beam.media.*`, inside the host's
+authentication and tenant boundary; nothing auto-mounts. `mount()` is show/update/destroy plus download;
+`ingest()` adds the metered ingest under `throttle:beam-media.ingest`. What a host contributes onto `media` mounts
+here too (owner-review-20261112 58):
+
+- `MediaRoutes::ops(array $ops, array $middleware)` mounts operations the host registered on `media`, by name,
+  inside the host's own gate (the flagship passes Tower's music ops and `EnsureCompositionMedium:music`; state `[]`
+  for no gate).
+- `MediaRoutes::relatives(string $parent, array $relatives)` mounts host-declared `#[ParticleRelative]` edges onto
+  `media` (the flagship's `fragments/{fragment}/media`). The declaration stays in the host, which owns the coupling.
+
 ## Topology
 
 beam-media depends **DOWN** on `spatie/laravel-medialibrary` and — as a **particle consumer** (the
